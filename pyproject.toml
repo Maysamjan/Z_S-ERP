@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zenith-business-erp"
+version = "0.1.0"
+description = "Zenith Business ERP - a small, offline, bilingual, commercial ERP for five retail/inventory business profiles"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Zenith Software" }]
+dependencies = [
+    "SQLAlchemy>=2.0",
+    "argon2-cffi>=21.3",
+    "cryptography>=41.0",
+    "PyQt6>=6.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-qt>=4.2",
+]
+build = [
+    "pyinstaller>=6.0",
+]
+
+[project.scripts]
+zenith = "zenith.__main__:main"
+zenith-license-manager = "zenith.vendor.license_manager_cli:main"
+
+[tool.setuptools.packages.find]
+include = ["zenith*"]
+
+[tool.setuptools.package-data]
+zenith = [
+    "ui/resources/qss/*.qss",
+    "ui/resources/translations/*.json",
+    "ui/resources/icons/*.svg",
+    "ui/resources/logos/*.svg",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "gui: tests that construct Qt widgets (require offscreen platform)",
+    "licensing: license system tests",
+    "profiles: profile registry tests",
+]

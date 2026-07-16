@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# App runtime / customer data (never commit)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.zbak
+/data/
+/backups/
+ProgramData/
+
+# Secrets - the private signing key must NEVER be committed
+vendor_private_key*.pem
+*_private_key.pem
+license_signing_key*
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp

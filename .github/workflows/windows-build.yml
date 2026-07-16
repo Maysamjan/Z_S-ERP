@@ -1,0 +1,77 @@
+name: Windows Build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Compilation check
+        run: python -m compileall zenith
+
+      - name: Run tests (Qt offscreen)
+        run: pytest -q
+
+      - name: Build PyInstaller one-folder app
+        run: pyinstaller packaging/ZenithBusinessERP.spec --noconfirm
+
+      - name: Packaged smoke test
+        run: dist/ZenithBusinessERP/ZenithBusinessERP.exe --help
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" packaging/installer.iss'
+
+      - name: Package source zip
+        run: |
+          git archive --format=zip -o Zenith-Business-ERP-Source.zip HEAD
+
+      - name: Package Windows test build zip
+        run: Compress-Archive -Path dist/ZenithBusinessERP/* -DestinationPath Zenith-Business-ERP-Windows-Test-Build.zip -Force
+
+      - name: Upload test-build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-test-build
+          path: Zenith-Business-ERP-Windows-Test-Build.zip
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/installer/ZenithBusinessERP-Test-Setup.exe
+
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-zip
+          path: Zenith-Business-ERP-Source.zip
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build/**
+            *.log
