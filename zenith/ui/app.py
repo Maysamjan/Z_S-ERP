@@ -33,11 +33,19 @@ class ZenithApp:
         self.qt = QApplication.instance() or QApplication(argv or sys.argv)
         self.db = Database()
         self.db.create_all()
+        self._apply_migrations()
         self.license_service = LicenseService()
         self.ctx: AppContext | None = None
         self._window = None
 
     # -- startup -----------------------------------------------------------
+    def _apply_migrations(self) -> None:
+        """Bring an existing customer database up to the current schema (additive)."""
+        from zenith.db.migrations import run_migrations
+        settings = self._load_settings()
+        profile = settings.profile_code if settings else None
+        run_migrations(self.db, profile_code=profile, backup=bool(settings))
+
     def _load_settings(self) -> BusinessSettings | None:
         with session_scope(self.db) as session:
             return session.scalar(select(BusinessSettings).limit(1))

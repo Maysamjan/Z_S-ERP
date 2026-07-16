@@ -4,7 +4,26 @@ This repository is a **working, tested foundation**, not a finished commercial
 release. This document states plainly what is and isn't done, so nothing here is
 oversold.
 
-## What is real and tested (54 automated tests, all passing)
+## Completion increment (added since the first foundation)
+
+Closed and covered by tests (now 62 total):
+- **Safe additive migrations** (`ALTER TABLE ADD COLUMN`) with a pre-migration
+  backup — the app no longer relies on `create_all()` alone for upgrades.
+- **Global Business Identity**: bilingual name/contact/logo/footer model +
+  service + Settings→Business Information tab; used in the shell title & sidebar.
+  Logo is validated and copied into a managed folder (survives original deletion).
+- **Real weighted-average cost & profit** — the dashboard profit card is no
+  longer a fake zero.
+- **Duplicate-product prevention** (similar-item check; genuine variants allowed)
+  and confirmed **product reuse** (repeated purchases increase the existing
+  product's stock via transactions — the Paracetamol workflow test).
+- **Pharmacy FEFO** batch suggestion + expired-batch sale blocking.
+- **New Purchase** and **New Sale/POS** pages wired with product search and
+  inline create-product.
+- **Numeric input widgets** (CurrencyInput/QuantityInput) with proper minimum
+  widths — fixes the overlapping-spinbox issue — applied to the main forms.
+
+## What is real and tested (62 automated tests, all passing)
 
 - Five-profile registry with feature flags; forbidden profiles proven absent.
 - Database schema (SQLAlchemy), Argon2id hashing, service-layer permissions.

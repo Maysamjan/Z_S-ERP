@@ -48,7 +48,11 @@ class SchemaVersion(Base):
 
 
 class BusinessSettings(Base):
-    """Single-row company profile + settings."""
+    """Single-row company profile + settings + full business identity.
+
+    The identity fields below feed the global BusinessIdentity service and every
+    official document/report -- not just the invoice page.
+    """
     __tablename__ = "business_settings"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     business_name: Mapped[str] = mapped_column(String(200), default="")
@@ -61,6 +65,25 @@ class BusinessSettings(Base):
     date_system: Mapped[str] = mapped_column(String(20), default="gregorian")  # or "solar_hijri"
     language: Mapped[str] = mapped_column(String(10), default="en_US")
     theme: Mapped[str] = mapped_column(String(10), default="light")
+
+    # --- extended bilingual business identity (schema v2) ----------------
+    business_name_en: Mapped[str] = mapped_column(String(200), default="")
+    owner_name: Mapped[str] = mapped_column(String(160), default="")
+    phone_secondary: Mapped[str] = mapped_column(String(60), default="")
+    whatsapp: Mapped[str] = mapped_column(String(60), default="")
+    website: Mapped[str] = mapped_column(String(160), default="")
+    address_en: Mapped[str] = mapped_column(String(300), default="")
+    province: Mapped[str] = mapped_column(String(80), default="")
+    city: Mapped[str] = mapped_column(String(80), default="")
+    district: Mapped[str] = mapped_column(String(80), default="")
+    registration_no: Mapped[str] = mapped_column(String(80), default="")
+    tax_no: Mapped[str] = mapped_column(String(80), default="")
+    slogan: Mapped[str] = mapped_column(String(200), default="")
+    invoice_footer_fa: Mapped[str] = mapped_column(Text, default="")
+    invoice_footer_en: Mapped[str] = mapped_column(Text, default="")
+    terms_fa: Mapped[str] = mapped_column(Text, default="")
+    terms_en: Mapped[str] = mapped_column(Text, default="")
+    currency_secondary: Mapped[str] = mapped_column(String(10), default="")
 
 
 # --------------------------------------------------------------------------

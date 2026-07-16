@@ -11,11 +11,10 @@ from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QHBoxLayout, QVBoxLayout, QDialog, QLineEdit, QDoubleSpinBox, QDialogButtonBox,
-    QMessageBox,
+    QHBoxLayout, QVBoxLayout, QDialog, QLineEdit, QDialogButtonBox, QMessageBox,
 )
 
-from zenith.core.exceptions import ZenithError
+from zenith.core.exceptions import ZenithError, ValidationError
 from zenith.db.base import session_scope
 from zenith.profiles.features import F_WHOLESALE_PRICING, F_PHARMACY_FIELDS
 from zenith.services import inventory
@@ -24,12 +23,14 @@ from zenith.ui.pages.base import BasePage
 from zenith.ui.widgets.common import SearchInput, FormSection, Toast
 from zenith.ui.widgets.buttons import PrimaryButton, SecondaryButton
 from zenith.ui.widgets.data_table import DataTable
+from zenith.ui.widgets.inputs import CurrencyInput, QuantityInput
 
 
 class ProductDialog(QDialog):
     def __init__(self, ctx, parent=None):
         super().__init__(parent)
         self.ctx = ctx
+        self.created_id: int | None = None
         self.setWindowTitle(ctx.tr("products.new"))
         self.setMinimumWidth(560)
         lay = QVBoxLayout(self)
@@ -55,7 +56,7 @@ class ProductDialog(QDialog):
         lay.addWidget(pricing)
 
         inv = FormSection(ctx.tr("products.section.inventory"))
-        self.min_stock = self._money()
+        self.min_stock = QuantityInput()
         inv.add_row(ctx.tr("products.field.min_stock"), self.min_stock)
         lay.addWidget(inv)
 
@@ -84,11 +85,8 @@ class ProductDialog(QDialog):
 
         self.code.setFocus()
 
-    def _money(self) -> QDoubleSpinBox:
-        sb = QDoubleSpinBox()
-        sb.setMaximum(10_000_000)
-        sb.setDecimals(2)
-        return sb
+    def _money(self) -> CurrencyInput:
+        return CurrencyInput()
 
     def _error_label(self):
         from PyQt6.QtWidgets import QLabel
@@ -112,10 +110,28 @@ class ProductDialog(QDialog):
             fields["trade_name"] = self.trade.text().strip() or None
             fields["manufacturer"] = self.manufacturer.text().strip() or None
             fields["batch_tracked"] = True
+        self._persist(fields, allow_similar=False)
+
+    def _persist(self, fields: dict, allow_similar: bool) -> None:
         try:
             with session_scope(self.ctx.db) as session:
-                CatalogService(session).create_product(self.ctx.user, **fields)
+                product = CatalogService(session).create_product(
+                    self.ctx.user, allow_similar=allow_similar, **fields)
+                self.created_id = product.id
             self.accept()
+        except ValidationError as exc:
+            if exc.message_key == "error.duplicate_similar":
+                # Offer to reuse-or-create; genuinely different items can proceed.
+                choice = QMessageBox.question(
+                    self, self.ctx.tr("products.new"),
+                    self.ctx.tr("error.duplicate_similar") + "\n\n" + self.ctx.tr("common.add") + "?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                )
+                if choice == QMessageBox.StandardButton.Yes:
+                    self._persist(fields, allow_similar=True)
+                return
+            self.error.setText(self.ctx.tr(exc.message_key))
+            self.error.setVisible(True)
         except ZenithError as exc:
             self.error.setText(self.ctx.tr(exc.message_key))
             self.error.setVisible(True)

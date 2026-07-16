@@ -13,8 +13,51 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from zenith.db.models import (
-    Sale, Product, Customer, Account, StockItem, Warehouse, Batch, StockMovement,
+    Sale, SaleLine, Product, Customer, Account, StockItem, Warehouse, Batch, StockMovement,
+    Purchase, PurchaseLine,
 )
+
+
+def weighted_avg_cost(session: Session, product_id: int) -> Decimal:
+    """Weighted-average purchase cost of a product across approved purchases.
+
+    Falls back to the product's stored purchase price when there is no purchase
+    history yet. This is *current* WAC (not historical-at-sale-time); the
+    limitation is documented in KNOWN_LIMITATIONS.
+    """
+    q = (
+        select(
+            func.coalesce(func.sum(PurchaseLine.quantity * PurchaseLine.unit_price), 0),
+            func.coalesce(func.sum(PurchaseLine.quantity), 0),
+        )
+        .select_from(PurchaseLine)
+        .join(Purchase, Purchase.id == PurchaseLine.purchase_id)
+        .where(Purchase.status == "approved", PurchaseLine.product_id == product_id)
+    )
+    total_value, total_qty = session.execute(q).one()
+    total_value = Decimal(str(total_value or 0))
+    total_qty = Decimal(str(total_qty or 0))
+    if total_qty > 0:
+        return (total_value / total_qty).quantize(Decimal("0.0001"))
+    product = session.get(Product, product_id)
+    return Decimal(str(product.purchase_price)) if product else Decimal("0")
+
+
+def profit_for_day(session: Session, day: date | None = None) -> Decimal:
+    """Gross profit of approved sales on a day: revenue - weighted-average COGS."""
+    day = day or date.today()
+    lines = session.execute(
+        select(SaleLine.product_id, SaleLine.quantity, SaleLine.line_total)
+        .join(Sale, Sale.id == SaleLine.sale_id)
+        .where(Sale.status == "approved", Sale.date == day)
+    ).all()
+    cost_cache: dict[int, Decimal] = {}
+    profit = Decimal("0")
+    for product_id, qty, line_total in lines:
+        if product_id not in cost_cache:
+            cost_cache[product_id] = weighted_avg_cost(session, product_id)
+        profit += Decimal(str(line_total)) - (Decimal(str(qty)) * cost_cache[product_id])
+    return profit
 
 
 def today_sales_total(session: Session, day: date | None = None) -> Decimal:
@@ -96,7 +139,7 @@ def recent_movements_count(session: Session, day: date | None = None) -> int:
 #: card key -> callable(session) -> value; formatter marks money vs count.
 CARD_PROVIDERS = {
     "today_sales": (today_sales_total, "money"),
-    "today_profit": (lambda s: Decimal("0"), "money"),  # requires COGS ledger (see limitations)
+    "today_profit": (profit_for_day, "money"),  # real weighted-average COGS profit
     "low_stock": (low_stock_count, "count"),
     "receivables": (receivables_total, "money"),
     "cash_on_hand": (cash_on_hand, "money"),

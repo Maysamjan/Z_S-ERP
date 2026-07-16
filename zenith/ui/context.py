@@ -47,6 +47,19 @@ class AppContext:
     def license_status(self) -> LicenseStatus:
         return self.license_service.status(expected_profile=self.profile_code)
 
+    def identity(self):
+        """Current business identity snapshot (name, logo, contact, footers)."""
+        from zenith.db.base import session_scope
+        from zenith.services.business_identity import BusinessIdentityService
+        with session_scope(self.db) as session:
+            return BusinessIdentityService(session).get_identity()
+
+    def display_name(self) -> str:
+        try:
+            return self.identity().name(self.locale) or self.business_name
+        except Exception:
+            return self.business_name
+
     # -- theming / direction ----------------------------------------------
     def set_locale(self, locale: str) -> None:
         self.locale = locale

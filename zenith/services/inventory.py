@@ -13,8 +13,10 @@ from decimal import Decimal
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
+from datetime import date
+
 from zenith.core.exceptions import InsufficientStock, ValidationError, PermissionDenied
-from zenith.db.models import StockItem, StockMovement, Warehouse, User
+from zenith.db.models import StockItem, StockMovement, Warehouse, User, Batch
 from zenith.security.permissions import Permission
 from zenith.services import audit
 from zenith.services.permissions_util import require
@@ -69,6 +71,41 @@ def apply_movement(session: Session, *, product_id: int, warehouse_id: int, qty_
                        note=note, user_id=actor.id if actor else None)
     session.add(mv)
     return mv
+
+
+def batch_stock(session: Session, product_id: int, warehouse_id: int | None = None) -> list[tuple[Batch, Decimal]]:
+    """(batch, quantity) pairs with positive stock for a product."""
+    q = (
+        select(StockItem.batch_id, func.sum(StockItem.quantity))
+        .where(StockItem.product_id == product_id, StockItem.batch_id.isnot(None))
+        .group_by(StockItem.batch_id)
+    )
+    if warehouse_id is not None:
+        q = q.where(StockItem.warehouse_id == warehouse_id)
+    out: list[tuple[Batch, Decimal]] = []
+    for batch_id, qty in session.execute(q).all():
+        qty = Decimal(str(qty or 0))
+        if qty <= 0:
+            continue
+        batch = session.get(Batch, batch_id)
+        if batch is not None:
+            out.append((batch, qty))
+    return out
+
+
+def suggest_fefo_batch(session: Session, product_id: int, warehouse_id: int | None = None,
+                       today: date | None = None) -> Batch | None:
+    """First-Expire-First-Out: the in-stock, non-expired batch with the nearest expiry."""
+    today = today or date.today()
+    valid = [
+        (b, q) for (b, q) in batch_stock(session, product_id, warehouse_id)
+        if b.expiry_date is None or b.expiry_date >= today
+    ]
+    if not valid:
+        return None
+    # nearest expiry first; batches without an expiry date sort last
+    valid.sort(key=lambda bq: (bq[0].expiry_date is None, bq[0].expiry_date or date.max))
+    return valid[0][0]
 
 
 def adjust(session: Session, actor: User, *, product_id: int, warehouse_id: int,

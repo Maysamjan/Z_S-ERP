@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
     def __init__(self, ctx: AppContext, parent=None):
         super().__init__(parent)
         self.ctx = ctx
-        self.setWindowTitle(f"{ctx.tr('app.name')} — {ctx.business_name}")
+        self.setWindowTitle(f"{ctx.tr('app.name')} — {ctx.display_name()}")
         self.setMinimumSize(1024, 700)
         self._pages: dict[str, QWidget] = {}
         self._nav_buttons: dict[str, QPushButton] = {}
@@ -79,6 +79,11 @@ class MainWindow(QMainWindow):
         brand = QLabel("◆ " + self.ctx.tr("app.name"))
         brand.setObjectName("SidebarBrand")
         v.addWidget(brand)
+        # Global customer business identity in the shell header.
+        biz = QLabel(self.ctx.display_name() or self.ctx.tr("app.name"))
+        biz.setObjectName("SidebarProfile")
+        biz.setWordWrap(True)
+        v.addWidget(biz)
         prof = QLabel(self.ctx.tr(self.ctx.profile.name_key))
         prof.setObjectName("SidebarProfile")
         v.addWidget(prof)

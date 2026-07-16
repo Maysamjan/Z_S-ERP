@@ -41,7 +41,38 @@ class CatalogService:
         return unit
 
     # -- products ----------------------------------------------------------
-    def create_product(self, actor, **fields) -> Product:
+    @staticmethod
+    def _normalize(text: str) -> str:
+        return " ".join((text or "").strip().lower().split())
+
+    def find_similar(self, name: str, *, strength: str | None = None,
+                     dosage_form: str | None = None, manufacturer: str | None = None) -> list[Product]:
+        """Return existing products that look like the same item.
+
+        Genuinely different items (e.g. Paracetamol 500mg tablet vs
+        Paracetamol 120mg/5ml syrup) differ in strength/dosage form and are NOT
+        reported as duplicates.
+        """
+        norm = self._normalize(name)
+        if not norm:
+            return []
+        candidates = self.session.scalars(
+            select(Product).where(Product.is_deleted == False, Product.name.ilike(f"%{name.strip()}%"))  # noqa: E712
+        ).all()
+        out = []
+        for p in candidates:
+            if self._normalize(p.name) != norm:
+                continue
+            if strength and p.strength and self._normalize(p.strength) != self._normalize(strength):
+                continue
+            if dosage_form and p.dosage_form and self._normalize(p.dosage_form) != self._normalize(dosage_form):
+                continue
+            if manufacturer and p.manufacturer and self._normalize(p.manufacturer) != self._normalize(manufacturer):
+                continue
+            out.append(p)
+        return out
+
+    def create_product(self, actor, *, allow_similar: bool = False, **fields) -> Product:
         require(actor, Permission.PRODUCT_MANAGE)
         code = (fields.get("code") or "").strip()
         name = (fields.get("name") or "").strip()
@@ -49,6 +80,13 @@ class CatalogService:
             raise ValidationError(message_key="error.code_required")
         if not name:
             raise ValidationError(message_key="error.name_required")
+        if not allow_similar:
+            similar = self.find_similar(
+                name, strength=fields.get("strength"),
+                dosage_form=fields.get("dosage_form"), manufacturer=fields.get("manufacturer"),
+            )
+            if similar:
+                raise ValidationError(message_key="error.duplicate_similar")
         if self.session.scalar(select(Product).where(Product.code == code, Product.is_deleted == False)):  # noqa: E712
             raise ValidationError(message_key="error.duplicate_code")
         barcode = fields.get("barcode")
