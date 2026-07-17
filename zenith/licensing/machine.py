@@ -64,9 +64,17 @@ def _generic_identifiers() -> list[str]:
     return ids
 
 
+def test_override_allowed() -> bool:
+    """The ``ZENITH_MACHINE_ID`` fingerprint override is honored ONLY when an
+    explicit automated-test flag is set. Production builds never set it, so the
+    override cannot be used to bypass machine binding in production.
+    """
+    return os.environ.get("ZENITH_ALLOW_TEST_FINGERPRINT") == "1"
+
+
 def raw_identifiers() -> list[str]:
     override = os.environ.get("ZENITH_MACHINE_ID")
-    if override:
+    if override and test_override_allowed():
         return [f"override:{override.strip()}"]
     ids = _windows_identifiers() if os.name == "nt" else []
     ids += _generic_identifiers()

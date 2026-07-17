@@ -35,6 +35,16 @@ Closed and covered by tests (now 107 total):
 - **Sales & purchase returns**: dedicated return documents with atomic stock
   restore, over-return/duplicate-return guards, exact-batch restoration, and
   party-balance reversal; wired Sales/Purchase Returns pages.
+- **Zenith License Manager (owner-only GUI)**: separate `vendor_tools/` app with
+  owner login (Argon2 + lockout), an AES-GCM/scrypt encrypted private-key store
+  (DPAPI-wrapped on Windows), license generation with immediate self-verification,
+  renewal, replacement (with reason + links), five-profile test-bundle, license
+  history + search, vendor audit log and backup. Customer side gained `.zreq`
+  request export (full 64-hex fingerprint shown), `.zlic` file import in the
+  License page and Setup Wizard, and a production lock on the test fingerprint
+  override. Signing code is kept out of customer builds (spec excludes +
+  `scripts/build_zips.sh` produces a customer-safe ZIP; `tests/test_customer_safety.py`
+  proves the customer runtime imports no signing code).
 - **Finance module**: cash/bank/mobile-money accounts; customer receipts and
   supplier payments with invoice allocation, atomic balance updates, duplicate
   protection and reversal (permission+reason); expenses with approve-posts-to-
@@ -80,8 +90,14 @@ screens). Remaining for a full release:
   this environment (Linux). Do not treat the installer as shipped until CI
   produces the artifacts on a Windows runner.
 - **DPAPI / QR / Caps-Lock:** DPAPI wrapping activates only on Windows with
-  `pywin32`; the machine-request QR code and a robust Caps-Lock indicator are
-  planned.
+  `pywin32`; the machine-request/license **QR code** is not implemented (the
+  requirement said "where practical" — request/license *files* and codes are the
+  supported transport); a robust Caps-Lock indicator is planned.
+- **License Manager gaps:** "Export License Details PDF" and "Print License Details"
+  are provided as TXT/JSON detail export (no PDF/print yet); the session
+  inactivity auto-lock is manual (Lock button) rather than timer-driven; the
+  Windows `ZenithLicenseManager.exe`/installer are scripted (PyInstaller spec +
+  Inno `.iss`) but **not produced/verified** here (needs a Windows runner).
 - **Additional docs:** per-profile user guides, DATABASE.md, RESPONSIVE_UI_GUIDE,
   LOCALIZATION_GUIDE, OFFLINE_ACTIVATION_GUIDE, LICENSE_TRANSFER_GUIDE,
   BACKUP_RESTORE_GUIDE, WINDOWS_TEST_CHECKLIST are outlined in the brief and not

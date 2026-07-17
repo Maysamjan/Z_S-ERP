@@ -14,6 +14,7 @@ import tempfile
 
 import pytest
 
+os.environ.setdefault("ZENITH_ALLOW_TEST_FINGERPRINT", "1")  # enable test override (never set in prod)
 os.environ.setdefault("ZENITH_MACHINE_ID", "TEST-MACHINE-DEFAULT")
 os.environ.setdefault("ZENITH_DATA_DIR", tempfile.mkdtemp(prefix="zenith-test-"))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")

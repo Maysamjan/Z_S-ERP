@@ -242,34 +242,41 @@ class LicensePage(QWizardPage):
         self.setTitle(i18n.tr("setup.step.license"))
         lay = QVBoxLayout(self)
 
-        row = QHBoxLayout()
-        row.addWidget(QLabel(i18n.tr("setup.request_code") + ":"))
-        self.request = QLineEdit(request_code())
-        self.request.setReadOnly(True)
-        row.addWidget(self.request, 1)
-        lay.addLayout(row)
+        from PyQt6.QtCore import Qt as _Qt
+        lay.addWidget(QLabel(i18n.tr("license.fingerprint") + ":"))
+        self.fingerprint = QLineEdit(machine_fingerprint())
+        self.fingerprint.setReadOnly(True)
+        self.fingerprint.setLayoutDirection(_Qt.LayoutDirection.LeftToRight)
+        lay.addWidget(self.fingerprint)
+
+        from zenith.ui.widgets.buttons import PrimaryButton, SecondaryButton
+        req_row = QHBoxLayout()
+        copy_fp = SecondaryButton(i18n.tr("license.copy_fingerprint")); copy_fp.clicked.connect(self._copy_fp)
+        save_req = SecondaryButton(i18n.tr("license.save_request")); save_req.clicked.connect(self._save_request)
+        req_row.addWidget(copy_fp); req_row.addWidget(save_req); req_row.addStretch(1)
+        lay.addLayout(req_row)
 
         lay.addWidget(QLabel(i18n.tr("setup.license_key")))
         self.key_input = QPlainTextEdit()
         self.key_input.setPlaceholderText("ZBE1....")
         self.key_input.setMaximumHeight(90)
+        self.key_input.setLayoutDirection(_Qt.LayoutDirection.LeftToRight)
         lay.addWidget(self.key_input)
 
-        from zenith.ui.widgets.buttons import PrimaryButton
+        btn_row = QHBoxLayout()
         self.activate_btn = PrimaryButton(i18n.tr("setup.activate"))
         self.activate_btn.clicked.connect(self._activate)
-        lay.addWidget(self.activate_btn)
+        self.import_file_btn = SecondaryButton(i18n.tr("license.import_file"))
+        self.import_file_btn.clicked.connect(self._import_file)
+        btn_row.addWidget(self.activate_btn); btn_row.addWidget(self.import_file_btn); btn_row.addStretch(1)
+        lay.addLayout(btn_row)
 
         self.status = QLabel("")
         self.status.setWordWrap(True)
         lay.addWidget(self.status)
         lay.addStretch(1)
 
-    def _activate(self):
-        key = self.key_input.toPlainText().strip()
-        if not key:
-            return
-        st = self.license_service.import_key(key, expected_profile=self.result.profile_code, today=date.today())
+    def _apply_status(self, st):
         if st.state == LicenseState.ACTIVE:
             self._activated = True
             self.status.setProperty("badge", "success")
@@ -280,6 +287,38 @@ class LicensePage(QWizardPage):
             self.status.setText(i18n.tr(st.reason_key))
         self.status.style().unpolish(self.status); self.status.style().polish(self.status)
         self.completeChanged.emit()
+
+    def _activate(self):
+        key = self.key_input.toPlainText().strip()
+        if not key:
+            return
+        self._apply_status(self.license_service.import_key(
+            key, expected_profile=self.result.profile_code, today=date.today()))
+
+    def _import_file(self):
+        from PyQt6.QtWidgets import QFileDialog
+        from pathlib import Path
+        path, _ = QFileDialog.getOpenFileName(self, i18n.tr("license.import_file"), "", "Zenith License (*.zlic)")
+        if not path:
+            return
+        self._apply_status(self.license_service.import_file(
+            Path(path).read_text(encoding="utf-8"), expected_profile=self.result.profile_code, today=date.today()))
+
+    def _copy_fp(self):
+        from PyQt6.QtWidgets import QApplication
+        QApplication.clipboard().setText(self.fingerprint.text())
+
+    def _save_request(self):
+        from PyQt6.QtWidgets import QFileDialog
+        from pathlib import Path
+        from zenith.licensing.request import build_request
+        from zenith import __version__
+        path, _ = QFileDialog.getSaveFileName(
+            self, i18n.tr("license.save_request"), f"{self.result.profile_code}.zreq", "Zenith Request (*.zreq)")
+        if path:
+            req = build_request(self.fingerprint.text().strip(), self.result.profile_code,
+                                app_version=__version__, business_name=self.result.business_name)
+            Path(path).write_text(req.to_file_json(), encoding="utf-8")
 
     def isComplete(self) -> bool:
         return self._activated

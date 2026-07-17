@@ -5,6 +5,7 @@ All wired to real services (LicenseService, backup module, AuthService/DB).
 
 from __future__ import annotations
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit, QComboBox,
     QFileDialog, QMessageBox, QTabWidget, QWidget,
@@ -37,23 +38,75 @@ class LicensePage(BasePage):
         self.card.body().addLayout(self.grid)
         self.content.addWidget(self.card)
 
+        # Full machine fingerprint (shown in full, LTR) + request actions.
+        from zenith.licensing.machine import machine_fingerprint
+        fp_card = Card()
+        fp_card.body().addWidget(QLabel(ctx.tr("license.fingerprint")))
+        self.fp_field = QPlainTextEdit(machine_fingerprint())
+        self.fp_field.setReadOnly(True); self.fp_field.setMaximumHeight(56)
+        self.fp_field.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        fp_card.body().addWidget(self.fp_field)
+        self.content.addWidget(fp_card)
+
         row = QHBoxLayout()
-        copy = SecondaryButton(ctx.tr("license.copy_request"))
+        copy_fp = SecondaryButton(ctx.tr("license.copy_fingerprint"))
+        copy_fp.clicked.connect(self._copy_fingerprint)
+        copy = SecondaryButton(ctx.tr("license.copy_request_code"))
         copy.clicked.connect(self._copy_request)
+        save_req = SecondaryButton(ctx.tr("license.save_request"))
+        save_req.clicked.connect(self._save_request)
         transfer = SecondaryButton(ctx.tr("license.transfer"))
         transfer.clicked.connect(self._transfer)
-        row.addWidget(copy); row.addWidget(transfer); row.addStretch(1)
+        row.addWidget(copy_fp); row.addWidget(copy); row.addWidget(save_req)
+        row.addWidget(transfer); row.addStretch(1)
         self.content.addLayout(row)
 
         imp = Card()
         imp.body().addWidget(QLabel(ctx.tr("setup.license_key")))
         self.key_input = QPlainTextEdit(); self.key_input.setMaximumHeight(80)
+        self.key_input.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         imp.body().addWidget(self.key_input)
+        btn_row = QHBoxLayout()
         btn = PrimaryButton(ctx.tr("license.import"))
         btn.clicked.connect(self._import)
-        imp.body().addWidget(btn)
+        btn_file = SecondaryButton(ctx.tr("license.import_file"))
+        btn_file.clicked.connect(self._import_file)
+        btn_row.addWidget(btn); btn_row.addWidget(btn_file); btn_row.addStretch(1)
+        imp.body().addLayout(btn_row)
         self.content.addWidget(imp)
         self.content.addStretch(1)
+        self.refresh()
+
+    def _request(self):
+        from zenith.licensing.request import build_request
+        from zenith import __version__
+        return build_request(self.fp_field.toPlainText().strip(), self.ctx.profile_code,
+                             app_version=__version__, business_name=self.ctx.business_name)
+
+    def _copy_fingerprint(self):
+        from PyQt6.QtWidgets import QApplication
+        QApplication.clipboard().setText(self.fp_field.toPlainText().strip())
+        Toast.show_message(self, self.ctx.tr("setup.copy"), "info")
+
+    def _save_request(self):
+        from pathlib import Path
+        path, _ = QFileDialog.getSaveFileName(
+            self, self.ctx.tr("license.save_request"),
+            f"{self.ctx.profile_code}.zreq", "Zenith Request (*.zreq)")
+        if path:
+            Path(path).write_text(self._request().to_file_json(), encoding="utf-8")
+            Toast.show_message(self, self.ctx.tr("license.request_saved", path=Path(path).name), "success")
+
+    def _import_file(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, self.ctx.tr("license.import_file"), "", "Zenith License (*.zlic)")
+        if not path:
+            return
+        from pathlib import Path
+        st = self.ctx.license_service.import_file(
+            Path(path).read_text(encoding="utf-8"), expected_profile=self.ctx.profile_code)
+        kind = "success" if st.state == LicenseState.ACTIVE else "danger"
+        Toast.show_message(self, self.ctx.tr(st.reason_key), kind)
         self.refresh()
 
     def _row(self, r, label_key, value):

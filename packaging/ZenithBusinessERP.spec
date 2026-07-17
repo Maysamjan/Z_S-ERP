@@ -25,7 +25,8 @@ a = Analysis(
     hiddenimports=["argon2", "cryptography", "sqlalchemy"],
     hookspath=[],
     runtime_hooks=[],
-    excludes=["tkinter", "pytest"],
+    # Never ship the private-key signing code to customers.
+    excludes=["tkinter", "pytest", "vendor_tools", "zenith.vendor", "zenith.licensing.signing"],
     cipher=block_cipher,
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)

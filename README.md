@@ -40,7 +40,25 @@ Run the tests (Qt runs headless via the offscreen platform):
 QT_QPA_PLATFORM=offscreen pytest -q
 ```
 
-## Vendor: issuing a license
+## Zenith License Manager (owner-only)
+
+A separate, graphical owner-only app for generating, verifying, saving and managing
+signed licenses. It holds the Ed25519 **private key** and must never be shipped to
+customers. See `docs/VENDOR_LICENSE_MANAGER_GUIDE.md`.
+
+```bash
+python -m vendor_tools.license_manager.run     # owner-only GUI
+```
+
+Build the two source ZIPs (customer-safe vs owner-only):
+
+```bash
+scripts/build_zips.sh dist
+#  dist/Zenith-Business-ERP-Source.zip             (customers - no signing code)
+#  dist/Zenith-License-Manager-Source-Owner-Only.zip (owner only)
+```
+
+## Vendor: issuing a license from the CLI
 
 ```bash
 # one time: create the signing keypair, embed the printed PUBLIC key in

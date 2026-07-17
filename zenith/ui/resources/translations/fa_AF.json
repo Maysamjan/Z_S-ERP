@@ -409,5 +409,12 @@
   "finance.payment_voucher": "سند پرداخت",
   "finance.expense_voucher": "سند مصرف",
   "finance.print": "چاپ",
-  "migration.failed": "پایگاه داده قابل ارتقا نبود. داده‌ها و نسخهٔ پشتیبان شما امن و بدون تغییر است. لطفاً این پیام را به پشتیبانی ارسال کنید:\n\n{error}"
+  "migration.failed": "پایگاه داده قابل ارتقا نبود. داده‌ها و نسخهٔ پشتیبان شما امن و بدون تغییر است. لطفاً این پیام را به پشتیبانی ارسال کنید:\n\n{error}",
+  "license.fingerprint": "اثر انگشت کامل دستگاه",
+  "license.copy_fingerprint": "کپی اثر انگشت کامل",
+  "license.copy_request_code": "کپی کد درخواست",
+  "license.save_request": "ذخیرهٔ فایل درخواست (.zreq)",
+  "license.import_file": "وارد کردن فایل لایسنس (.zlic)",
+  "license.request_saved": "فایل درخواست ذخیره شد: {path}",
+  "license.imported_ok": "لایسنس وارد و تأیید شد."
 }
