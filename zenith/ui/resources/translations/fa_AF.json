@@ -342,5 +342,13 @@
   "sale.retail": "خرده",
   "sale.wholesale": "عمده",
   "card.today_profit.caption": "بر اساس میانگین موزون هزینه",
-  "reports.profit": "سود"
+  "reports.profit": "سود",
+  "common.discount": "تخفیف",
+  "print.preview": "پیش‌نمایش چاپ",
+  "print.print": "چاپ",
+  "print.pdf": "خروجی PDF",
+  "print.paper.a4": "فاکتور A4",
+  "print.paper.80mm": "رسید ۸۰ میلی‌متر",
+  "print.paper.58mm": "رسید ۵۸ میلی‌متر",
+  "print.exported": "PDF ذخیره شد: {path}"
 }

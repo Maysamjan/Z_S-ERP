@@ -342,5 +342,13 @@
   "sale.retail": "Retail",
   "sale.wholesale": "Wholesale",
   "card.today_profit.caption": "Based on weighted-average cost",
-  "reports.profit": "Profit"
+  "reports.profit": "Profit",
+  "common.discount": "Discount",
+  "print.preview": "Print Preview",
+  "print.print": "Print",
+  "print.pdf": "Export PDF",
+  "print.paper.a4": "A4 Invoice",
+  "print.paper.80mm": "Receipt 80 mm",
+  "print.paper.58mm": "Receipt 58 mm",
+  "print.exported": "PDF exported: {path}"
 }

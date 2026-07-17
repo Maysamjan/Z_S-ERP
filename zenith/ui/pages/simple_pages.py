@@ -32,13 +32,25 @@ class SalesListPage(BasePage):
 
     def __init__(self, ctx, parent=None):
         super().__init__(ctx, parent)
+        self.header.set_action(ctx.tr("print.preview")).clicked.connect(self._preview_selected)
         self.table = DataTable(
             [ctx.tr("sales.col.invoice"), ctx.tr("common.date"), ctx.tr("sales.col.customer"),
              ctx.tr("sales.col.total"), ctx.tr("sales.col.status")],
             empty_text=ctx.tr("common.empty"),
         )
+        # Double-click a sale to open the branded print preview with its real data.
+        self.table.rowActivated.connect(self._open_preview)
         self.content.addWidget(self.table, 1)
         self.refresh()
+
+    def _preview_selected(self):
+        sale_id = self.table.selected_id()
+        if sale_id is not None:
+            self._open_preview(sale_id)
+
+    def _open_preview(self, sale_id):
+        from zenith.ui.dialogs.print_preview import SalePrintPreviewDialog
+        SalePrintPreviewDialog(self.ctx, sale_id, self).exec()
 
     def refresh(self):
         rows, ids = [], []

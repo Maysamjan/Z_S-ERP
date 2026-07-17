@@ -43,7 +43,7 @@ Classification legend: **COMPLETE** · **PARTIAL** · **MISSING** · **BROKEN** 
 | **Numeric inputs** | COMPLETE | CurrencyInput/QuantityInput with min widths; applied to product/purchase/sale forms |
 | Bilingual (en/fa) + RTL | COMPLETE | 344 keys, parity + non-empty asserted |
 | Returns (sales/purchase) | MISSING | Not built |
-| Printing (A4/A5/58/80mm) | MISSING | Templates not built |
+| **Printing (A4/80/58mm)** | PARTIAL | Branded sale invoice/receipt renderer + preview dialog + PDF export, wired to Sales List; A5, purchase/voucher/statement templates and invoice-settings screen pending |
 | Reports suite | PARTIAL | Dashboard metrics + profit; full report screens pending |
 | Finance screens (receipts/payments/expenses) | HIDDEN | Models exist; screens pending |
 | Windows build / installer | WIN-VERIFY | Spec + Inno script + CI provided; artifacts not yet produced on Windows |

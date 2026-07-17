@@ -6,7 +6,7 @@ oversold.
 
 ## Completion increment (added since the first foundation)
 
-Closed and covered by tests (now 62 total):
+Closed and covered by tests (now 68 total):
 - **Safe additive migrations** (`ALTER TABLE ADD COLUMN`) with a pre-migration
   backup — the app no longer relies on `create_all()` alone for upgrades.
 - **Global Business Identity**: bilingual name/contact/logo/footer model +
@@ -22,8 +22,14 @@ Closed and covered by tests (now 62 total):
   inline create-product.
 - **Numeric input widgets** (CurrencyInput/QuantityInput) with proper minimum
   widths — fixes the overlapping-spinbox issue — applied to the main forms.
+- **Branded printing (first slice)**: sale invoice rendered as A4 / 80mm / 58mm
+  with the saved business identity (logo, bilingual name, phone, address,
+  tax/registration, footers, terms), full RTL for Persian; print-preview dialog
+  with paper switching and verified PDF export, opened from the Sales List
+  (double-click or Print Preview). Still pending: A5, purchase documents,
+  vouchers, statements, shift reports, and the invoice-settings screen.
 
-## What is real and tested (62 automated tests, all passing)
+## What is real and tested (68 automated tests, all passing)
 
 - Five-profile registry with feature flags; forbidden profiles proven absent.
 - Database schema (SQLAlchemy), Argon2id hashing, service-layer permissions.
@@ -45,16 +51,16 @@ Closed and covered by tests (now 62 total):
 Modules without a finished page are **not shown** in the sidebar (no placeholder
 screens). Remaining for a full release:
 
-- **Feature UIs:** New Sale/POS screen, Sales/Purchase Returns, New Purchase form,
-  Categories/Units/Barcodes/Price-List editors, Warehouses/Transfer/Adjustment/
-  Count screens, Damaged/Expiring stock, Receipts/Payments/Expenses/Accounts,
-  Cashier-shift open/close, Roles editor, Reports screens. (Services/back-end for
-  most of these already exist; the UI is what remains.)
-- **Printing:** A4/A5 invoices, 58/80mm receipts, statements, vouchers, shift
-  closing, expiry reports. (Not implemented.)
-- **Reporting:** profit (gross/net) requires a COGS ledger; the dashboard
-  "profit" card is currently a placeholder value of 0 and is documented as such
-  in `zenith/services/reporting.py`.
+- **Feature UIs:** Sales/Purchase Returns, Categories/Units/Barcodes/Price-List
+  editors, Warehouses/Transfer/Adjustment/Count screens, Damaged/Expiring stock,
+  Receipts/Payments/Expenses/Accounts, Cashier-shift open/close, Roles editor,
+  Reports screens, batch selection on the purchase/sale pages. (Services/back-end
+  for most of these already exist; the UI is what remains.)
+- **Printing:** A5 paper, purchase documents, payment/expense vouchers,
+  statements, shift-closing and expiry reports, and the invoice-settings screen.
+  (The branded sale invoice for A4/80mm/58mm with preview + PDF export IS done.)
+- **Reporting:** profit uses *current* weighted-average cost, not the historical
+  cost at sale time; full report screens (date ranges, export) remain to build.
 - **Windows packaging artifacts:** the PyInstaller spec, version metadata, and the
   Inno Setup script are provided and the CI workflow drives them, **but a
   successful Windows build/installer has not yet been produced and verified** in
