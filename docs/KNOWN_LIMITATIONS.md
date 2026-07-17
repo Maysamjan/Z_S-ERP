@@ -6,7 +6,7 @@ oversold.
 
 ## Completion increment (added since the first foundation)
 
-Closed and covered by tests (now 68 total):
+Closed and covered by tests (now 75 total):
 - **Safe additive migrations** (`ALTER TABLE ADD COLUMN`) with a pre-migration
   backup — the app no longer relies on `create_all()` alone for upgrades.
 - **Global Business Identity**: bilingual name/contact/logo/footer model +
@@ -28,8 +28,11 @@ Closed and covered by tests (now 68 total):
   with paper switching and verified PDF export, opened from the Sales List
   (double-click or Print Preview). Still pending: A5, purchase documents,
   vouchers, statements, shift reports, and the invoice-settings screen.
+- **Sales & purchase returns**: dedicated return documents with atomic stock
+  restore, over-return/duplicate-return guards, exact-batch restoration, and
+  party-balance reversal; wired Sales/Purchase Returns pages.
 
-## What is real and tested (68 automated tests, all passing)
+## What is real and tested (75 automated tests, all passing)
 
 - Five-profile registry with feature flags; forbidden profiles proven absent.
 - Database schema (SQLAlchemy), Argon2id hashing, service-layer permissions.
@@ -51,11 +54,12 @@ Closed and covered by tests (now 68 total):
 Modules without a finished page are **not shown** in the sidebar (no placeholder
 screens). Remaining for a full release:
 
-- **Feature UIs:** Sales/Purchase Returns, Categories/Units/Barcodes/Price-List
-  editors, Warehouses/Transfer/Adjustment/Count screens, Damaged/Expiring stock,
+- **Feature UIs:** Categories/Units/Barcodes/Price-List editors,
+  Warehouses/Transfer/Adjustment/Count screens, Damaged/Expiring stock,
   Receipts/Payments/Expenses/Accounts, Cashier-shift open/close, Roles editor,
   Reports screens, batch selection on the purchase/sale pages. (Services/back-end
-  for most of these already exist; the UI is what remains.)
+  for most of these already exist; the UI is what remains.) Sales/Purchase
+  **Returns are done** (atomic, guarded, wired).
 - **Printing:** A5 paper, purchase documents, payment/expense vouchers,
   statements, shift-closing and expiry reports, and the invoice-settings screen.
   (The branded sale invoice for A4/80mm/58mm with preview + PDF export IS done.)

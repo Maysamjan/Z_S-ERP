@@ -336,7 +336,12 @@ class SaleLine(Base):
     unit_price: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
     discount: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))
     line_total: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
+    returned_qty: Mapped[Decimal] = mapped_column(QTY, default=Decimal("0"), nullable=False)
     sale: Mapped[Sale] = relationship(back_populates="lines")
+
+    @property
+    def returnable_qty(self) -> Decimal:
+        return (self.quantity or Decimal("0")) - (self.returned_qty or Decimal("0"))
 
 
 class Purchase(Base, TimestampMixin):
@@ -372,7 +377,12 @@ class PurchaseLine(Base):
     quantity: Mapped[Decimal] = mapped_column(QTY, nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
     line_total: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
+    returned_qty: Mapped[Decimal] = mapped_column(QTY, default=Decimal("0"), nullable=False)
     purchase: Mapped[Purchase] = relationship(back_populates="lines")
+
+    @property
+    def returnable_qty(self) -> Decimal:
+        return (self.quantity or Decimal("0")) - (self.returned_qty or Decimal("0"))
 
 
 class Payment(Base, TimestampMixin):
@@ -400,3 +410,60 @@ class CashierShift(Base, TimestampMixin):
     expected_cash: Mapped[Decimal | None] = mapped_column(MONEY)
     difference: Mapped[Decimal | None] = mapped_column(MONEY)
     status: Mapped[str] = mapped_column(String(10), default="open")  # open/closed
+
+
+# --------------------------------------------------------------------------
+# Returns (dedicated documents linked to the original sale/purchase)
+# --------------------------------------------------------------------------
+class SalesReturn(Base, TimestampMixin):
+    __tablename__ = "sales_returns"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    return_no: Mapped[str] = mapped_column(String(40), nullable=False)
+    sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"), nullable=False)
+    date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False, index=True)
+    warehouse_id: Mapped[int | None] = mapped_column(ForeignKey("warehouses.id"))
+    total: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    lines: Mapped[list["SalesReturnLine"]] = relationship(
+        back_populates="doc", cascade="all, delete-orphan")
+    __table_args__ = (UniqueConstraint("return_no", name="uq_sales_return_no"),)
+
+
+class SalesReturnLine(Base):
+    __tablename__ = "sales_return_lines"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    return_id: Mapped[int] = mapped_column(ForeignKey("sales_returns.id"), nullable=False)
+    sale_line_id: Mapped[int] = mapped_column(ForeignKey("sale_lines.id"), nullable=False)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    batch_id: Mapped[int | None] = mapped_column(ForeignKey("batches.id"))
+    quantity: Mapped[Decimal] = mapped_column(QTY, nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
+    line_total: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
+    doc: Mapped[SalesReturn] = relationship(back_populates="lines")
+
+
+class PurchaseReturn(Base, TimestampMixin):
+    __tablename__ = "purchase_returns"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    return_no: Mapped[str] = mapped_column(String(40), nullable=False)
+    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"), nullable=False)
+    date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False, index=True)
+    warehouse_id: Mapped[int | None] = mapped_column(ForeignKey("warehouses.id"))
+    total: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    lines: Mapped[list["PurchaseReturnLine"]] = relationship(
+        back_populates="doc", cascade="all, delete-orphan")
+    __table_args__ = (UniqueConstraint("return_no", name="uq_purchase_return_no"),)
+
+
+class PurchaseReturnLine(Base):
+    __tablename__ = "purchase_return_lines"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    return_id: Mapped[int] = mapped_column(ForeignKey("purchase_returns.id"), nullable=False)
+    purchase_line_id: Mapped[int] = mapped_column(ForeignKey("purchase_lines.id"), nullable=False)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    batch_id: Mapped[int | None] = mapped_column(ForeignKey("batches.id"))
+    quantity: Mapped[Decimal] = mapped_column(QTY, nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
+    line_total: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
+    doc: Mapped[PurchaseReturn] = relationship(back_populates="lines")

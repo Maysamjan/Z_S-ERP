@@ -350,5 +350,18 @@
   "print.paper.a4": "A4 Invoice",
   "print.paper.80mm": "Receipt 80 mm",
   "print.paper.58mm": "Receipt 58 mm",
-  "print.exported": "PDF exported: {path}"
+  "print.exported": "PDF exported: {path}",
+  "error.not_approved": "The document must be approved first.",
+  "error.return_exceeds": "Return quantity exceeds the returnable amount.",
+  "returns.sales_title": "Sales Returns",
+  "returns.sales_subtitle": "Return sold goods and restore stock.",
+  "returns.purchase_title": "Purchase Returns",
+  "returns.purchase_subtitle": "Return purchased goods to the supplier.",
+  "returns.pick_doc": "Select an approved document",
+  "returns.returnable": "Returnable",
+  "returns.return_qty": "Return qty",
+  "returns.create": "Create Return",
+  "returns.created": "Return created and stock updated.",
+  "returns.no_qty": "Enter a quantity for at least one line.",
+  "returns.original_doc": "Original document"
 }

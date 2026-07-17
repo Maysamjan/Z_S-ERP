@@ -350,5 +350,18 @@
   "print.paper.a4": "فاکتور A4",
   "print.paper.80mm": "رسید ۸۰ میلی‌متر",
   "print.paper.58mm": "رسید ۵۸ میلی‌متر",
-  "print.exported": "PDF ذخیره شد: {path}"
+  "print.exported": "PDF ذخیره شد: {path}",
+  "error.not_approved": "ابتدا باید سند تأیید شود.",
+  "error.return_exceeds": "تعداد برگشتی از مقدار قابل‌برگشت بیشتر است.",
+  "returns.sales_title": "برگشت فروش",
+  "returns.sales_subtitle": "برگشت کالای فروخته‌شده و بازگرداندن موجودی.",
+  "returns.purchase_title": "برگشت خرید",
+  "returns.purchase_subtitle": "برگشت کالای خریداری‌شده به تأمین‌کننده.",
+  "returns.pick_doc": "یک سند تأییدشده انتخاب کنید",
+  "returns.returnable": "قابل برگشت",
+  "returns.return_qty": "تعداد برگشت",
+  "returns.create": "ثبت برگشت",
+  "returns.created": "برگشت ثبت شد و موجودی به‌روزرسانی شد.",
+  "returns.no_qty": "برای حداقل یک ردیف تعداد وارد کنید.",
+  "returns.original_doc": "سند اصلی"
 }

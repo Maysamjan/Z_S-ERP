@@ -18,6 +18,7 @@ from zenith.ui.pages.suppliers import SuppliersPage
 from zenith.ui.pages.simple_pages import SalesListPage, StockBalancePage, AuditLogPage
 from zenith.ui.pages.admin_pages import LicensePage, BackupPage, UsersPage, SettingsPage
 from zenith.ui.pages.transactions import NewPurchasePage, NewSalePage
+from zenith.ui.pages.returns_pages import SalesReturnsPage, PurchaseReturnsPage
 
 PageFactory = Callable[[AppContext], object]
 
@@ -25,7 +26,9 @@ PAGE_REGISTRY: dict[str, PageFactory] = {
     M.DASHBOARD: DashboardPage,
     M.SALES_NEW: NewSalePage,
     M.POS: NewSalePage,
+    M.SALES_RETURNS: SalesReturnsPage,
     M.PURCHASE_NEW: NewPurchasePage,
+    M.PURCHASE_RETURNS: PurchaseReturnsPage,
     M.PRODUCTS: ProductsPage,
     M.CUSTOMERS: CustomersPage,
     M.SUPPLIERS: SuppliersPage,

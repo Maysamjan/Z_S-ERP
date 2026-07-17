@@ -42,7 +42,7 @@ Classification legend: **COMPLETE** · **PARTIAL** · **MISSING** · **BROKEN** 
 | Users list | PARTIAL | List; add/edit/reset UI pending (service auth exists) |
 | **Numeric inputs** | COMPLETE | CurrencyInput/QuantityInput with min widths; applied to product/purchase/sale forms |
 | Bilingual (en/fa) + RTL | COMPLETE | 344 keys, parity + non-empty asserted |
-| Returns (sales/purchase) | MISSING | Not built |
+| **Returns (sales/purchase)** | COMPLETE | Atomic stock restore; over-return & duplicate-return blocked; exact-batch restore; party-balance reversal; wired pages; 7 tests |
 | **Printing (A4/80/58mm)** | PARTIAL | Branded sale invoice/receipt renderer + preview dialog + PDF export, wired to Sales List; A5, purchase/voucher/statement templates and invoice-settings screen pending |
 | Reports suite | PARTIAL | Dashboard metrics + profit; full report screens pending |
 | Finance screens (receipts/payments/expenses) | HIDDEN | Models exist; screens pending |

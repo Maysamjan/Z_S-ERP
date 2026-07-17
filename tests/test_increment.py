@@ -39,9 +39,10 @@ def test_migration_adds_missing_columns_and_preserves_data(tmp_path):
     missing_tables, missing_cols = plan_missing(db)
     assert any(col == "business_name_en" for _, col in missing_cols)
 
+    from zenith.services.bootstrap import CURRENT_SCHEMA_VERSION
     report = run_migrations(db, profile_code=None, backup=False)
     assert "business_settings.business_name_en" in report.added_columns
-    assert report.to_version == 2
+    assert report.to_version == CURRENT_SCHEMA_VERSION
 
     # data preserved + new column present
     from sqlalchemy import inspect, select
