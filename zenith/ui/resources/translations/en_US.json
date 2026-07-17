@@ -408,5 +408,6 @@
   "finance.receipt_voucher": "Receipt Voucher",
   "finance.payment_voucher": "Payment Voucher",
   "finance.expense_voucher": "Expense Voucher",
-  "finance.print": "Print"
+  "finance.print": "Print",
+  "migration.failed": "The database could not be upgraded. Your data and backup are safe and unchanged. Please contact support with this message:\n\n{error}"
 }

@@ -6,9 +6,13 @@ oversold.
 
 ## Completion increment (added since the first foundation)
 
-Closed and covered by tests (now 89 total):
+Closed and covered by tests (now 97 total):
 - **Safe additive migrations** (`ALTER TABLE ADD COLUMN`) with a pre-migration
-  backup — the app no longer relies on `create_all()` alone for upgrades.
+  backup — the app no longer relies on `create_all()` alone for upgrades. Startup
+  upgrades the schema **before any current-version ORM query runs**, reading only
+  the old-compatible `profile_code` via raw SQL; migration failure retains the
+  database and backup (never deletes) and shows a clear message. Covered by
+  `tests/test_startup_migration.py` for empty/v1/v2/v3/current/missing-version.
 - **Global Business Identity**: bilingual name/contact/logo/footer model +
   service + Settings→Business Information tab; used in the shell title & sidebar.
   Logo is validated and copied into a managed folder (survives original deletion).
@@ -37,7 +41,7 @@ Closed and covered by tests (now 89 total):
   account and net-profit effect; account transfers (atomic, money-conserving);
   branded receipt/payment/expense vouchers with PDF export; wired pages.
 
-## What is real and tested (89 automated tests, all passing)
+## What is real and tested (97 automated tests, all passing)
 
 - Five-profile registry with feature flags; forbidden profiles proven absent.
 - Database schema (SQLAlchemy), Argon2id hashing, service-layer permissions.

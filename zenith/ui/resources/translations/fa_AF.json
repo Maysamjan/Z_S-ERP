@@ -408,5 +408,6 @@
   "finance.receipt_voucher": "سند دریافت",
   "finance.payment_voucher": "سند پرداخت",
   "finance.expense_voucher": "سند مصرف",
-  "finance.print": "چاپ"
+  "finance.print": "چاپ",
+  "migration.failed": "پایگاه داده قابل ارتقا نبود. داده‌ها و نسخهٔ پشتیبان شما امن و بدون تغییر است. لطفاً این پیام را به پشتیبانی ارسال کنید:\n\n{error}"
 }
