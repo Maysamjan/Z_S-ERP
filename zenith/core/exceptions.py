@@ -59,6 +59,14 @@ class CreditLimitExceeded(BusinessRuleError):
     message_key = "error.credit_limit"
 
 
+class DuplicatePosting(BusinessRuleError):
+    message_key = "error.duplicate_posting"
+
+
+class AlreadyReversed(BusinessRuleError):
+    message_key = "error.already_reversed"
+
+
 # --- Licensing ------------------------------------------------------------
 class LicenseError(ZenithError):
     message_key = "license.error.generic"

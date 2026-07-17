@@ -128,9 +128,10 @@ def test_migration_v2_to_v3_adds_returned_qty_and_tables(tmp_path):
     eng.dispose()
 
     from zenith.db.migrations import run_migrations
+    from zenith.services.bootstrap import CURRENT_SCHEMA_VERSION
     db = Database(f"sqlite:///{dbfile}")
     report = run_migrations(db, profile_code=None, backup=False)
-    assert report.to_version == 3
+    assert report.to_version == CURRENT_SCHEMA_VERSION
     insp = inspect(db.engine)
     assert "returned_qty" in {c["name"] for c in insp.get_columns("sale_lines")}
     assert "sales_returns" in insp.get_table_names()

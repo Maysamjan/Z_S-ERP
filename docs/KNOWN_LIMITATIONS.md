@@ -6,7 +6,7 @@ oversold.
 
 ## Completion increment (added since the first foundation)
 
-Closed and covered by tests (now 75 total):
+Closed and covered by tests (now 89 total):
 - **Safe additive migrations** (`ALTER TABLE ADD COLUMN`) with a pre-migration
   backup — the app no longer relies on `create_all()` alone for upgrades.
 - **Global Business Identity**: bilingual name/contact/logo/footer model +
@@ -31,8 +31,13 @@ Closed and covered by tests (now 75 total):
 - **Sales & purchase returns**: dedicated return documents with atomic stock
   restore, over-return/duplicate-return guards, exact-batch restoration, and
   party-balance reversal; wired Sales/Purchase Returns pages.
+- **Finance module**: cash/bank/mobile-money accounts; customer receipts and
+  supplier payments with invoice allocation, atomic balance updates, duplicate
+  protection and reversal (permission+reason); expenses with approve-posts-to-
+  account and net-profit effect; account transfers (atomic, money-conserving);
+  branded receipt/payment/expense vouchers with PDF export; wired pages.
 
-## What is real and tested (75 automated tests, all passing)
+## What is real and tested (89 automated tests, all passing)
 
 - Five-profile registry with feature flags; forbidden profiles proven absent.
 - Database schema (SQLAlchemy), Argon2id hashing, service-layer permissions.
@@ -56,10 +61,10 @@ screens). Remaining for a full release:
 
 - **Feature UIs:** Categories/Units/Barcodes/Price-List editors,
   Warehouses/Transfer/Adjustment/Count screens, Damaged/Expiring stock,
-  Receipts/Payments/Expenses/Accounts, Cashier-shift open/close, Roles editor,
-  Reports screens, batch selection on the purchase/sale pages. (Services/back-end
-  for most of these already exist; the UI is what remains.) Sales/Purchase
-  **Returns are done** (atomic, guarded, wired).
+  Cashier-shift open/close, Roles editor, Reports screens, batch selection on
+  the purchase/sale pages. (Services/back-end for most of these already exist;
+  the UI is what remains.) Sales/Purchase **Returns** and the **Finance module**
+  (receipts/payments/expenses/accounts/transfers) are done (atomic, guarded, wired).
 - **Printing:** A5 paper, purchase documents, payment/expense vouchers,
   statements, shift-closing and expiry reports, and the invoice-settings screen.
   (The branded sale invoice for A4/80mm/58mm with preview + PDF export IS done.)

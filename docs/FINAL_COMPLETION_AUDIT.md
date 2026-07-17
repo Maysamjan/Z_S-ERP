@@ -37,6 +37,12 @@ Classification legend: **COMPLETE** · **PARTIAL** · **MISSING** · **BROKEN** 
 | Customers / Suppliers | COMPLETE | List + create, wired |
 | Inventory transfer/adjust | PARTIAL | Services complete + tested; dedicated screens pending |
 | Sales list / Stock balance / Audit | COMPLETE | Live data pages |
+| **Finance: accounts** | COMPLETE | Cash/bank/mobile-money, opening+current balance, active/inactive; Cash & Bank pages |
+| **Finance: receipts** | COMPLETE | Customer receipts, invoice allocation (auto/explicit), atomic balance updates, duplicate guard, branded receipt voucher + PDF |
+| **Finance: supplier payments** | COMPLETE | Purchase allocation, atomic balances, duplicate guard, branded payment voucher |
+| **Finance: expenses** | COMPLETE | Categories, draft→approve (posts to account), branded expense voucher; net profit reflects expenses |
+| **Finance: transfers** | COMPLETE | Atomic both-sides, same-account rejected, duplicate guard, money conserved |
+| **Finance: reversals** | COMPLETE | Reversal (permission + reason) restores balances & de-allocates; double-reversal blocked |
 | License page | COMPLETE | Status, import, copy request, transfer |
 | Backup / Restore | COMPLETE | Create/verify/restore, profile-guarded |
 | Users list | PARTIAL | List; add/edit/reset UI pending (service auth exists) |

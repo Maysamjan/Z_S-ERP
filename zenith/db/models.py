@@ -274,8 +274,10 @@ class Account(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     kind: Mapped[str] = mapped_column(String(20), default="cash")  # cash/bank/mobile_money
+    opening_balance: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))
     balance: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 
 class ExpenseCategory(Base, TimestampMixin):
@@ -290,10 +292,13 @@ class Expense(Base, TimestampMixin, SoftDeleteMixin):
     voucher_no: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
     category_id: Mapped[int | None] = mapped_column(ForeignKey("expense_categories.id"))
     account_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id"))
-    date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)
+    date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False, index=True)
     amount: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
+    attachment_path: Mapped[str | None] = mapped_column(String(500))
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    reference: Mapped[str] = mapped_column(String(60), default="")
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
 
 # --------------------------------------------------------------------------
@@ -388,15 +393,50 @@ class PurchaseLine(Base):
 class Payment(Base, TimestampMixin):
     __tablename__ = "payments"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    ref_no: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
-    date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)
+    ref_no: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)  # system doc number
+    date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False, index=True)
     direction: Mapped[str] = mapped_column(String(10), nullable=False)  # in (receipt) / out (payment)
     party_type: Mapped[str] = mapped_column(String(10), default="")     # customer/supplier
-    party_id: Mapped[int | None] = mapped_column(Integer)
-    account_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id"))
+    party_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    account_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id"), index=True)
     amount: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
     method: Mapped[str] = mapped_column(String(20), default="cash")
+    reference: Mapped[str] = mapped_column(String(60), default="")      # external/user reference
     note: Mapped[str] = mapped_column(Text, default="")
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    is_reversal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    reverses_id: Mapped[int | None] = mapped_column(ForeignKey("payments.id"))
+    reversed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    allocations: Mapped[list["PaymentAllocation"]] = relationship(
+        back_populates="payment", cascade="all, delete-orphan")
+
+
+class PaymentAllocation(Base):
+    """Allocates part of a payment to a specific invoice/document."""
+    __tablename__ = "payment_allocations"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    payment_id: Mapped[int] = mapped_column(ForeignKey("payments.id"), nullable=False)
+    doc_type: Mapped[str] = mapped_column(String(12), nullable=False)  # sale/purchase
+    doc_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
+    payment: Mapped[Payment] = relationship(back_populates="allocations")
+
+
+class AccountTransfer(Base, TimestampMixin):
+    __tablename__ = "account_transfers"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ref_no: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
+    date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False, index=True)
+    from_account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), nullable=False)
+    to_account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(MONEY, nullable=False)
+    reference: Mapped[str] = mapped_column(String(60), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    reversed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    __table_args__ = (
+        CheckConstraint("from_account_id <> to_account_id", name="ck_transfer_distinct_accounts"),
+    )
 
 
 class CashierShift(Base, TimestampMixin):

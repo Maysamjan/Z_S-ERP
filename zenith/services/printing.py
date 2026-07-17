@@ -110,7 +110,8 @@ def render_sale_invoice(session: Session, sale_id: int, *, paper: str = "a4",
     """Render a posted sale as a branded invoice/receipt."""
     locale = locale or i18n.get_translator().locale
     rtl = locale in i18n.RTL_LOCALES
-    tr = lambda k, **p: i18n.get_translator().tr(k, **p)  # noqa: E731
+    trans = i18n.Translator(locale)  # locale-scoped so labels honor the passed locale
+    tr = trans.tr
 
     sale = session.get(Sale, sale_id)
     if sale is None:
@@ -177,6 +178,91 @@ def render_sale_invoice(session: Session, sale_id: int, *, paper: str = "a4",
         f"<body>{header}{meta}{items}{totals}{foot}</body></html>"
     )
     return RenderedDocument(html=html_doc, title=f"{sale.invoice_no}", paper=paper)
+
+
+def _voucher(session: Session, *, title_key: str, doc_no: str, day, party_label: str,
+             party_name: str, amount, account_name: str, reference: str, note: str,
+             paper: str, locale: str | None) -> RenderedDocument:
+    """Shared branded voucher for receipts, supplier payments and expenses."""
+    locale = locale or i18n.get_translator().locale
+    rtl = locale in i18n.RTL_LOCALES
+    trans = i18n.Translator(locale)  # locale-scoped so labels honor the passed locale
+    tr = trans.tr
+    header, extras = _identity_block(session, locale)
+    currency = extras["currency"]
+
+    rows = [
+        (tr("common.date"), _esc(day.isoformat() if hasattr(day, "isoformat") else day)),
+        (party_label, _esc(party_name)),
+        (tr("finance.account"), _esc(account_name)),
+        (tr("finance.reference"), _esc(reference or "-")),
+    ]
+    body_rows = "".join(
+        f"<tr><td class='muted'>{label}</td><td>{value}</td></tr>" for label, value in rows
+    )
+    amount_html = (
+        f"<table class='totals'><tr class='grand'>"
+        f"<td>{_esc(tr('common.amount'))}</td><td>{_money(amount)} {currency}</td></tr></table>"
+    )
+    note_html = f"<div class='muted'>{_esc(note)}</div>" if note else ""
+    foot = ""
+    if extras["footer"]:
+        foot = f"<div class='foot'>{_esc(extras['footer'])}</div>"
+
+    html_doc = (
+        f"<html><head><meta charset='utf-8'><style>{_base_css(paper, rtl)}</style></head><body>"
+        f"{header}"
+        f"<div class='docmeta'><b>{_esc(tr(title_key))}</b> &nbsp; "
+        f"<b>{_esc(tr('finance.voucher_no'))}:</b> {_esc(doc_no)}</div>"
+        f"<table class='items'>{body_rows}</table>{amount_html}{note_html}{foot}"
+        f"</body></html>"
+    )
+    return RenderedDocument(html=html_doc, title=doc_no, paper=paper)
+
+
+def render_customer_receipt(session: Session, payment_id: int, *, paper: str = "a4",
+                            locale: str | None = None) -> RenderedDocument:
+    from zenith.db.models import Payment, Customer, Account as Acc
+    p = session.get(Payment, payment_id)
+    if p is None:
+        raise NotFound(message_key="error.not_found")
+    tr = i18n.get_translator().tr
+    cust = session.get(Customer, p.party_id) if p.party_id else None
+    acc = session.get(Acc, p.account_id) if p.account_id else None
+    return _voucher(session, title_key="finance.receipt_voucher", doc_no=p.ref_no, day=p.date,
+                    party_label=tr("license.customer"), party_name=cust.name if cust else "-",
+                    amount=p.amount, account_name=acc.name if acc else "-",
+                    reference=p.reference, note=p.note, paper=paper, locale=locale)
+
+
+def render_supplier_payment(session: Session, payment_id: int, *, paper: str = "a4",
+                            locale: str | None = None) -> RenderedDocument:
+    from zenith.db.models import Payment, Supplier, Account as Acc
+    p = session.get(Payment, payment_id)
+    if p is None:
+        raise NotFound(message_key="error.not_found")
+    tr = i18n.get_translator().tr
+    sup = session.get(Supplier, p.party_id) if p.party_id else None
+    acc = session.get(Acc, p.account_id) if p.account_id else None
+    return _voucher(session, title_key="finance.payment_voucher", doc_no=p.ref_no, day=p.date,
+                    party_label=tr("module.suppliers"), party_name=sup.name if sup else "-",
+                    amount=p.amount, account_name=acc.name if acc else "-",
+                    reference=p.reference, note=p.note, paper=paper, locale=locale)
+
+
+def render_expense_voucher(session: Session, expense_id: int, *, paper: str = "a4",
+                           locale: str | None = None) -> RenderedDocument:
+    from zenith.db.models import Expense, ExpenseCategory, Account as Acc
+    e = session.get(Expense, expense_id)
+    if e is None:
+        raise NotFound(message_key="error.not_found")
+    tr = i18n.get_translator().tr
+    cat = session.get(ExpenseCategory, e.category_id) if e.category_id else None
+    acc = session.get(Acc, e.account_id) if e.account_id else None
+    return _voucher(session, title_key="finance.expense_voucher", doc_no=e.voucher_no, day=e.date,
+                    party_label=tr("module.expenses"), party_name=cat.name if cat else "-",
+                    amount=e.amount, account_name=acc.name if acc else "-",
+                    reference=e.reference, note=e.description, paper=paper, locale=locale)
 
 
 def export_pdf(doc: RenderedDocument, out_path: str | Path) -> Path:

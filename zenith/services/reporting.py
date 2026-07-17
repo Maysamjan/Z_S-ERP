@@ -14,8 +14,23 @@ from sqlalchemy.orm import Session
 
 from zenith.db.models import (
     Sale, SaleLine, Product, Customer, Account, StockItem, Warehouse, Batch, StockMovement,
-    Purchase, PurchaseLine,
+    Purchase, PurchaseLine, Expense,
 )
+
+
+def expenses_total(session: Session, day: date | None = None) -> Decimal:
+    """Total of approved expenses on a day."""
+    day = day or date.today()
+    q = select(func.coalesce(func.sum(Expense.amount), 0)).where(
+        Expense.is_approved == True, Expense.date == day, Expense.is_deleted == False  # noqa: E712
+    )
+    return Decimal(str(session.scalar(q) or 0))
+
+
+def net_profit_for_day(session: Session, day: date | None = None) -> Decimal:
+    """Net profit = gross profit (revenue - COGS) - approved expenses."""
+    day = day or date.today()
+    return profit_for_day(session, day) - expenses_total(session, day)
 
 
 def weighted_avg_cost(session: Session, product_id: int) -> Decimal:

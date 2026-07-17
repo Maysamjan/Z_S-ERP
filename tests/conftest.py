@@ -19,6 +19,26 @@ os.environ.setdefault("ZENITH_DATA_DIR", tempfile.mkdtemp(prefix="zenith-test-")
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
+# One persistent QApplication for the whole test session. Creating/destroying
+# multiple QApplications (or passing a transient argv list to QApplication) can
+# abort inside Qt (e.g. QPrinter PDF export), so we build exactly one here and
+# keep its argv alive at module scope.
+_QT_ARGV = ["pytest-zenith"]
+_QT_APP = None
+
+
+@pytest.fixture(scope="session", autouse=True)
+def qt_app():
+    global _QT_APP
+    try:
+        from PyQt6.QtWidgets import QApplication
+    except Exception:
+        yield None
+        return
+    _QT_APP = QApplication.instance() or QApplication(_QT_ARGV)
+    yield _QT_APP
+
+
 @pytest.fixture()
 def data_dir(tmp_path, monkeypatch):
     d = tmp_path / "data"

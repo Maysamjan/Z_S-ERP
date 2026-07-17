@@ -13,11 +13,20 @@ from PyQt6.QtWidgets import (
 )
 
 from zenith.db.base import session_scope
-from zenith.services.printing import render_sale_invoice, export_pdf
+from zenith.services.printing import (
+    render_sale_invoice, render_customer_receipt, render_supplier_payment,
+    render_expense_voucher, export_pdf,
+)
 from zenith.ui.widgets.buttons import PrimaryButton, SecondaryButton
 from zenith.ui.widgets.common import Toast
 
 PAPERS = [("a4", "print.paper.a4"), ("80mm", "print.paper.80mm"), ("58mm", "print.paper.58mm")]
+
+_VOUCHER_RENDERERS = {
+    "receipt": render_customer_receipt,
+    "supplier_payment": render_supplier_payment,
+    "expense": render_expense_voucher,
+}
 
 
 class SalePrintPreviewDialog(QDialog):
@@ -89,4 +98,22 @@ class SalePrintPreviewDialog(QDialog):
                 text_doc.setHtml(self._doc.html)
                 text_doc.print(printer)
         except Exception as exc:
+            QMessageBox.critical(self, self.ctx.tr("common.error"), str(exc))
+
+
+class VoucherPreviewDialog(SalePrintPreviewDialog):
+    """Print preview for finance vouchers (receipt / supplier payment / expense)."""
+
+    def __init__(self, ctx, kind: str, doc_id: int, parent=None):
+        self._kind = kind
+        super().__init__(ctx, doc_id, parent)
+
+    def _render(self):
+        paper = self.paper.currentData() or "a4"
+        renderer = _VOUCHER_RENDERERS[self._kind]
+        try:
+            with session_scope(self.ctx.db) as s:
+                self._doc = renderer(s, self.sale_id, paper=paper, locale=self.ctx.locale)
+            self.view.setHtml(self._doc.html)
+        except Exception as exc:  # pragma: no cover - GUI error path
             QMessageBox.critical(self, self.ctx.tr("common.error"), str(exc))
