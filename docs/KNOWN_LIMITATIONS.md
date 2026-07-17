@@ -6,7 +6,7 @@ oversold.
 
 ## Completion increment (added since the first foundation)
 
-Closed and covered by tests (now 97 total):
+Closed and covered by tests (now 107 total):
 - **Safe additive migrations** (`ALTER TABLE ADD COLUMN`) with a pre-migration
   backup — the app no longer relies on `create_all()` alone for upgrades. Startup
   upgrades the schema **before any current-version ORM query runs**, reading only
@@ -41,7 +41,7 @@ Closed and covered by tests (now 97 total):
   account and net-profit effect; account transfers (atomic, money-conserving);
   branded receipt/payment/expense vouchers with PDF export; wired pages.
 
-## What is real and tested (97 automated tests, all passing)
+## What is real and tested (107 automated tests, all passing)
 
 - Five-profile registry with feature flags; forbidden profiles proven absent.
 - Database schema (SQLAlchemy), Argon2id hashing, service-layer permissions.

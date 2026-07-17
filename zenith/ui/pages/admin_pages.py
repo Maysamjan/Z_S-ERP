@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit, QComboBox,
     QFileDialog, QMessageBox, QTabWidget, QWidget,
 )
-from PyQt6.QtGui import QPixmap
+from zenith.ui.widgets.logo_preview import LogoPreview
 
 from sqlalchemy import select
 
@@ -197,8 +197,7 @@ class SettingsPage(BasePage):
 
         # logo row
         logo_row = QHBoxLayout()
-        self.logo_preview = QLabel("—")
-        self.logo_preview.setFixedSize(96, 96)
+        self.logo_preview = LogoPreview(96)
         self.logo_preview.setStyleSheet("border:1px solid #ccc;border-radius:8px;")
         logo_row.addWidget(self.logo_preview)
         logo_btns = QVBoxLayout()
@@ -287,13 +286,8 @@ class SettingsPage(BasePage):
             self._render_logo(bs.logo_path)
 
     def _render_logo(self, path):
-        if path:
-            pix = QPixmap(path)
-            if not pix.isNull():
-                self.logo_preview.setPixmap(pix.scaled(
-                    96, 96, aspectRatioMode=1, transformMode=1))
-                return
-        self.logo_preview.setText("—")
+        # Delegate to the robust LogoPreview (typed enums, edge-case + resize safe).
+        self.logo_preview.set_logo(path)
 
     def _save_business(self):
         fields = {col: getattr(self, w).text() for w, col in self._BFIELDS.items()}

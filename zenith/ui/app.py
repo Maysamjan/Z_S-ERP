@@ -35,6 +35,10 @@ class ZenithApp:
         )
         self.qt = QApplication.instance() or QApplication(argv or sys.argv)
         self._configure_logging()
+        # Valid base font + suppress the benign pixel-QSS "setPointSize <= 0" warning.
+        from zenith.ui.theme.fonts import apply_base_font, install_font_warning_filter
+        install_font_warning_filter()
+        apply_base_font(self.qt)
         # Resolve the DB path and open the engine WITHOUT touching any ORM model.
         self.db = Database()
         self.migration_error: Exception | None = None
