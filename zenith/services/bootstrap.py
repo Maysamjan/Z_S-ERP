@@ -21,7 +21,7 @@ from zenith.security.password import hash_password
 from zenith.security.permissions import ROLE_TEMPLATES
 from zenith.services import audit
 
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 
 def seed_roles(session: Session) -> dict[str, Role]:

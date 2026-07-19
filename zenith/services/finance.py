@@ -163,9 +163,13 @@ class ReceiptService:
         )
         self.session.add(payment)
 
-        # atomic balance updates
+        # atomic: account up; customer debt down through the authoritative ledger
         account.balance = (account.balance or ZERO) + amount
-        customer.balance = (customer.balance or ZERO) - amount
+        from zenith.services import customer_ledger
+        customer_ledger.post(
+            self.session, customer_id=customer_id, entry_type="customer_payment",
+            credit=amount, ref_type="payment", ref_id=None, ref_no=payment.ref_no,
+            description=f"Payment {payment.ref_no}", actor=actor)
 
         self._allocate(payment, customer_id, amount, allocations, auto_allocate)
         self.session.flush()
@@ -186,6 +190,7 @@ class ReceiptService:
                 if applied <= 0:
                     continue
                 sale.paid = (sale.paid or ZERO) + applied
+                sale.payment_status = sale.compute_payment_status()
                 self.session.add(PaymentAllocation(
                     payment=payment, doc_type="sale", doc_id=sale.id, amount=applied))
                 remaining_to_allocate -= applied
@@ -202,6 +207,7 @@ class ReceiptService:
                     continue
                 applied = min(due, remaining_to_allocate)
                 sale.paid = (sale.paid or ZERO) + applied
+                sale.payment_status = sale.compute_payment_status()
                 self.session.add(PaymentAllocation(
                     payment=payment, doc_type="sale", doc_id=sale.id, amount=applied))
                 remaining_to_allocate -= applied
@@ -308,13 +314,17 @@ def _reverse_payment(session: Session, actor, payment_id: int, reason: str, part
 
     # restore party balance and de-allocate invoices
     if original.party_type == "customer":
-        party = session.get(Customer, original.party_id)
-        if party:
-            party.balance = (party.balance or ZERO) + original.amount  # they owe again
+        from zenith.services import customer_ledger
+        # reversing a customer payment re-adds the debt through the ledger
+        customer_ledger.post(
+            session, customer_id=original.party_id, entry_type="payment_reversal",
+            debit=original.amount, ref_type="payment", ref_id=original.id, ref_no=rev.ref_no,
+            description=f"Reversal of {original.ref_no}", actor=actor)
         for a in original.allocations:
             sale = session.get(Sale, a.doc_id)
             if sale:
                 sale.paid = (sale.paid or ZERO) - a.amount
+                sale.payment_status = sale.compute_payment_status()
     else:
         party = session.get(Supplier, original.party_id)
         if party:

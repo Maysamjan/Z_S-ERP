@@ -15,6 +15,7 @@ class Permission(str, enum.Enum):
     SALE_CREATE = "sale.create"
     SALE_APPROVE = "sale.approve"
     SALE_RETURN = "sale.return"
+    CREDIT_OVERRIDE = "sale.credit_override"
     # purchases
     PURCHASE_VIEW = "purchase.view"
     PURCHASE_CREATE = "purchase.create"
@@ -55,7 +56,8 @@ ROLE_TEMPLATES: dict[str, list[str]] = {
     "Administrator": ALL_PERMISSIONS,
     "Manager": [
         Permission.SALE_VIEW.value, Permission.SALE_CREATE.value, Permission.SALE_APPROVE.value,
-        Permission.SALE_RETURN.value, Permission.PURCHASE_VIEW.value, Permission.PURCHASE_CREATE.value,
+        Permission.SALE_RETURN.value, Permission.CREDIT_OVERRIDE.value,
+        Permission.PURCHASE_VIEW.value, Permission.PURCHASE_CREATE.value,
         Permission.PURCHASE_APPROVE.value, Permission.PURCHASE_RETURN.value, Permission.PRODUCT_VIEW.value,
         Permission.PRODUCT_MANAGE.value, Permission.PRICE_CHANGE.value, Permission.PARTY_VIEW.value,
         Permission.PARTY_MANAGE.value, Permission.STOCK_VIEW.value, Permission.STOCK_ADJUST.value,

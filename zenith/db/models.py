@@ -197,7 +197,51 @@ class Customer(Base, TimestampMixin, SoftDeleteMixin):
     balance: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))  # positive = owes us
     credit_limit: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))
     notes: Mapped[str] = mapped_column(Text, default="")
+
+    # --- extended commercial identity (schema v5) ------------------------
+    code: Mapped[str] = mapped_column(String(40), default="", index=True)
+    business_name: Mapped[str] = mapped_column(String(200), default="")
+    phone_secondary: Mapped[str] = mapped_column(String(60), default="")
+    whatsapp: Mapped[str] = mapped_column(String(60), default="")
+    email: Mapped[str] = mapped_column(String(120), default="")
+    province: Mapped[str] = mapped_column(String(80), default="")
+    city: Mapped[str] = mapped_column(String(80), default="")
+    district: Mapped[str] = mapped_column(String(80), default="")
+    national_id: Mapped[str] = mapped_column(String(60), default="")
+    #  "owed_to_business" = customer owes us (debit); "owed_to_customer" = we owe them
+    opening_balance_type: Mapped[str] = mapped_column(String(20), default="owed_to_business")
+    payment_term_days: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_cash_customer: Mapped[bool] = mapped_column(Boolean, default=False)  # walk-in, no debt
     __table_args__ = (Index("ix_customer_name", "name"),)
+
+
+class CustomerLedgerEntry(Base):
+    """Immutable customer account entry with a running balance.
+
+    Positive running balance = the customer owes the business. ``debit`` increases
+    what the customer owes (credit sale, opening balance owed to us); ``credit``
+    reduces it (payment, return, refund settlement). The ledger is the single
+    authoritative source of a customer's balance -- ``Customer.balance`` is a cache
+    kept equal to the latest entry's ``balance``.
+    """
+    __tablename__ = "customer_ledger_entries"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False, index=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), nullable=False, index=True)
+    entry_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    #  opening_balance / credit_sale / partial_credit_sale / customer_payment /
+    #  sales_return / invoice_cancellation / customer_refund / adjustment
+    ref_type: Mapped[str] = mapped_column(String(30), default="")
+    ref_id: Mapped[int | None] = mapped_column(Integer)
+    ref_no: Mapped[str] = mapped_column(String(40), default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    debit: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))
+    credit: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))
+    balance: Mapped[Decimal] = mapped_column(MONEY, nullable=False)  # running balance after entry
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    notes: Mapped[str] = mapped_column(Text, default="")
+    __table_args__ = (Index("ix_ledger_customer_at", "customer_id", "at"),)
 
 
 class Supplier(Base, TimestampMixin, SoftDeleteMixin):
@@ -320,6 +364,15 @@ class Sale(Base, TimestampMixin):
     price_mode: Mapped[str] = mapped_column(String(20), default="retail")  # retail/wholesale
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     shift_id: Mapped[int | None] = mapped_column(ForeignKey("cashier_shifts.id"))
+    # --- invoice workflow (schema v5) ------------------------------------
+    #  payment_status: unpaid / partial / paid  (independent of doc status)
+    payment_status: Mapped[str] = mapped_column(String(16), default="unpaid", index=True)
+    sale_type: Mapped[str] = mapped_column(String(10), default="cash")  # cash/credit
+    due_date: Mapped[date | None] = mapped_column(Date)
+    reference: Mapped[str] = mapped_column(String(60), default="")
+    #  snapshot of the customer balance at posting time (for the printed bill)
+    previous_balance: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))
+    new_balance: Mapped[Decimal] = mapped_column(MONEY, default=Decimal("0"))
     lines: Mapped[list["SaleLine"]] = relationship(back_populates="sale", cascade="all, delete-orphan")
     __table_args__ = (
         UniqueConstraint("invoice_no", name="uq_sale_invoice_no"),
@@ -329,6 +382,15 @@ class Sale(Base, TimestampMixin):
     @property
     def remaining(self) -> Decimal:
         return (self.total or Decimal("0")) - (self.paid or Decimal("0"))
+
+    def compute_payment_status(self) -> str:
+        total = self.total or Decimal("0")
+        paid = self.paid or Decimal("0")
+        if paid <= 0:
+            return "unpaid"
+        if paid >= total:
+            return "paid"
+        return "partial"
 
 
 class SaleLine(Base):

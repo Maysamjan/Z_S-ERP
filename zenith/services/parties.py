@@ -18,18 +18,38 @@ class PartyService:
     def __init__(self, session: Session):
         self.session = session
 
+    def find_by_phone(self, phone: str) -> Customer | None:
+        phone = (phone or "").strip()
+        if not phone:
+            return None
+        return self.session.scalar(
+            select(Customer).where(Customer.phone == phone, Customer.is_deleted == False)  # noqa: E712
+        )
+
     def create_customer(self, actor, name: str, phone: str = "", address: str = "",
                         opening_balance: Decimal | str = "0", credit_limit: Decimal | str = "0",
-                        notes: str = "") -> Customer:
+                        notes: str = "", *, opening_balance_type: str = "owed_to_business",
+                        allow_duplicate_phone: bool = False, is_cash_customer: bool = False,
+                        **extra) -> Customer:
         require(actor, Permission.PARTY_MANAGE)
         name = (name or "").strip()
         if not name:
             raise ValidationError(message_key="error.name_required")
+        phone = (phone or "").strip()
+        if phone and not allow_duplicate_phone and self.find_by_phone(phone) is not None:
+            raise ValidationError(message_key="error.duplicate_phone_customer")
         ob = Decimal(str(opening_balance))
-        c = Customer(name=name, phone=phone, address=address, opening_balance=ob, balance=ob,
-                     credit_limit=Decimal(str(credit_limit)), notes=notes)
+        allowed = {col.name for col in Customer.__table__.columns}
+        clean = {k: v for k, v in extra.items() if k in allowed}
+        c = Customer(name=name, phone=phone, address=address, opening_balance=ob,
+                     credit_limit=Decimal(str(credit_limit)), notes=notes,
+                     opening_balance_type=opening_balance_type, is_cash_customer=is_cash_customer,
+                     balance=Decimal("0"), **clean)
         self.session.add(c)
         self.session.flush()
+        # Seed the opening balance through the authoritative ledger.
+        from zenith.services import customer_ledger
+        customer_ledger.seed_opening_balance(self.session, c, actor=actor)
         audit.log(self.session, "customer_create", actor=actor, entity="customer", entity_id=c.id, detail=name)
         return c
 

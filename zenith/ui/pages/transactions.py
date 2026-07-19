@@ -203,8 +203,18 @@ class NewSalePage(BasePage, _LineEditorMixin):
         top = QHBoxLayout()
         self.customer_combo = QComboBox()
         self.customer_combo.setMinimumWidth(240)
+        # searchable: type a name/phone to filter the existing customers
+        self.customer_combo.setEditable(True)
+        self.customer_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        _cc = self.customer_combo.completer()
+        if _cc:
+            _cc.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+            _cc.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         top.addWidget(QLabel(ctx.tr("sale.customer")))
         top.addWidget(self.customer_combo)
+        new_cust = SecondaryButton(ctx.tr("customers.new"))
+        new_cust.clicked.connect(self._create_customer)
+        top.addWidget(new_cust)
         self.credit_check = QCheckBox(ctx.tr("sale.is_credit"))
         top.addWidget(self.credit_check)
         top.addStretch(1)
@@ -237,12 +247,29 @@ class NewSalePage(BasePage, _LineEditorMixin):
     def _default_price(self, product) -> Decimal:
         return Decimal(str(product.sale_price or 0))
 
-    def refresh(self):
+    def _reload_customers(self, select_id: int | None = None):
+        self.customer_combo.blockSignals(True)
         self.customer_combo.clear()
         self.customer_combo.addItem(self.ctx.tr("sale.walk_in"), None)
         with session_scope(self.ctx.db) as s:
             for c in PartyService(s).search_customers("", limit=1000):
-                self.customer_combo.addItem(c.name, c.id)
+                label = c.name + (f" — {c.phone}" if c.phone else "")
+                self.customer_combo.addItem(label, c.id)
+        self.customer_combo.blockSignals(False)
+        if select_id is not None:
+            idx = self.customer_combo.findData(select_id)
+            if idx >= 0:
+                self.customer_combo.setCurrentIndex(idx)
+
+    def _create_customer(self):
+        from zenith.ui.pages.customers import CustomerDialog
+        dlg = CustomerDialog(self.ctx, self)
+        if dlg.exec():
+            self._reload_customers(select_id=getattr(dlg, "created_id", None))
+            Toast.show_message(self, self.ctx.tr("customers.saved"), "success")
+
+    def refresh(self):
+        self._reload_customers()
         self._reload_products()
         self._lines = []
         self._refresh_lines_table()

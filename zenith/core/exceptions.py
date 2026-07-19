@@ -59,6 +59,14 @@ class CreditLimitExceeded(BusinessRuleError):
     message_key = "error.credit_limit"
 
 
+class CreditNeedsCustomer(BusinessRuleError):
+    message_key = "error.credit_needs_customer"
+
+
+class CashCustomerNoDebt(BusinessRuleError):
+    message_key = "error.cash_customer_no_debt"
+
+
 class DuplicatePosting(BusinessRuleError):
     message_key = "error.duplicate_posting"
 

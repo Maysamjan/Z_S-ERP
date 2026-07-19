@@ -13,7 +13,7 @@ from zenith.profiles import modules as M
 from zenith.ui.context import AppContext
 from zenith.ui.pages.dashboard import DashboardPage
 from zenith.ui.pages.products import ProductsPage
-from zenith.ui.pages.customers import CustomersPage
+from zenith.ui.pages.customers import CustomersPage, ReceivablesPage
 from zenith.ui.pages.suppliers import SuppliersPage
 from zenith.ui.pages.simple_pages import SalesListPage, StockBalancePage, AuditLogPage
 from zenith.ui.pages.admin_pages import LicensePage, BackupPage, UsersPage, SettingsPage
@@ -35,6 +35,7 @@ PAGE_REGISTRY: dict[str, PageFactory] = {
     M.PURCHASE_RETURNS: PurchaseReturnsPage,
     M.PRODUCTS: ProductsPage,
     M.CUSTOMERS: CustomersPage,
+    M.CUSTOMER_ACCOUNTS: ReceivablesPage,
     M.SUPPLIERS: SuppliersPage,
     M.SALES_LIST: SalesListPage,
     M.STOCK_BALANCE: StockBalancePage,

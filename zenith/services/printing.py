@@ -155,6 +155,19 @@ def render_sale_invoice(session: Session, sale_id: int, *, paper: str = "a4",
     )
 
     remaining = (sale.total or Decimal("0")) - (sale.paid or Decimal("0"))
+    # For a credit/partial sale to a registered (non-cash) customer, show the
+    # account movement: previous balance -> this invoice's credit -> new balance.
+    show_account = customer is not None and not customer.is_cash_customer and (
+        sale.sale_type == "credit" or (sale.new_balance or Decimal("0")) != (sale.previous_balance or Decimal("0"))
+    )
+    account_rows = ""
+    if show_account:
+        account_rows = (
+            f"<tr><td>{_esc(tr('customers.previous_balance'))}</td>"
+            f"<td>{_money(sale.previous_balance)} {currency}</td></tr>"
+            f"<tr class='grand'><td>{_esc(tr('customers.new_balance'))}</td>"
+            f"<td>{_money(sale.new_balance)} {currency}</td></tr>"
+        )
     totals = (
         "<table class='totals'>"
         f"<tr><td>{_esc(tr('common.total'))}</td><td>{_money(sale.subtotal)} {currency}</td></tr>"
@@ -162,8 +175,9 @@ def render_sale_invoice(session: Session, sale_id: int, *, paper: str = "a4",
            if sale.discount else "")
         + f"<tr class='grand'><td>{_esc(tr('purchase.grand_total'))}</td><td>{_money(sale.total)} {currency}</td></tr>"
         f"<tr><td>{_esc(tr('sale.paid'))}</td><td>{_money(sale.paid)} {currency}</td></tr>"
-        f"<tr><td>{_esc(tr('customers.col.balance'))}</td><td>{_money(remaining)} {currency}</td></tr>"
-        "</table>"
+        f"<tr><td>{_esc(tr('sale.invoice_remaining'))}</td><td>{_money(remaining)} {currency}</td></tr>"
+        + account_rows
+        + "</table>"
     )
 
     foot_parts = []
@@ -263,6 +277,71 @@ def render_expense_voucher(session: Session, expense_id: int, *, paper: str = "a
                     party_label=tr("module.expenses"), party_name=cat.name if cat else "-",
                     amount=e.amount, account_name=acc.name if acc else "-",
                     reference=e.reference, note=e.description, paper=paper, locale=locale)
+
+
+def render_customer_statement(session: Session, customer_id: int, *, start=None, end=None,
+                              paper: str = "a4", locale: str | None = None) -> RenderedDocument:
+    """Render a branded customer account statement with a running balance."""
+    from zenith.services import customer_ledger
+    locale = locale or i18n.get_translator().locale
+    rtl = locale in i18n.RTL_LOCALES
+    tr = i18n.Translator(locale).tr
+
+    customer = session.get(Customer, customer_id)
+    if customer is None:
+        raise NotFound(message_key="error.not_found")
+    header, extras = _identity_block(session, locale)
+    currency = extras["currency"]
+    st = customer_ledger.statement(session, customer_id, start=start, end=end)
+
+    meta_bits = [f"<b>{_esc(tr('license.customer'))}:</b> {_esc(customer.name)}"]
+    if customer.phone:
+        meta_bits.append(f"<b>{_esc(tr('common.phone'))}:</b> {_esc(customer.phone)}")
+    if start or end:
+        rng = f"{start.isoformat() if start else ''} - {end.isoformat() if end else ''}"
+        meta_bits.append(f"<b>{_esc(tr('reports.period'))}:</b> {_esc(rng)}")
+    meta = (
+        f"<div class='docmeta'><b>{_esc(tr('customers.statement'))}</b><br>"
+        + " &nbsp; ".join(meta_bits) + "</div>"
+    )
+
+    rows = [
+        "<tr><td colspan='4'>" + _esc(tr("customers.opening_balance"))
+        + f"</td><td>{_money(st.opening)} {currency}</td></tr>"
+    ]
+    for ln in st.lines:
+        day = ln.at.date().isoformat() if hasattr(ln.at, "date") else _esc(ln.at)
+        rows.append(
+            "<tr>"
+            f"<td>{_esc(day)}</td>"
+            f"<td>{_esc(ln.ref_no or '-')}</td>"
+            f"<td>{_esc(ln.description or ln.entry_type)}</td>"
+            f"<td>{_money(ln.debit) if ln.debit else ''}"
+            f"{('  -' + _money(ln.credit)) if ln.credit else ''}</td>"
+            f"<td>{_money(ln.balance)} {currency}</td>"
+            "</tr>"
+        )
+    items = (
+        "<table class='items'><thead><tr>"
+        f"<th>{_esc(tr('common.date'))}</th><th>{_esc(tr('finance.reference'))}</th>"
+        f"<th>{_esc(tr('common.description'))}</th><th>{_esc(tr('common.amount'))}</th>"
+        f"<th>{_esc(tr('customers.col.balance'))}</th>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+    )
+    totals = (
+        "<table class='totals'>"
+        f"<tr><td>{_esc(tr('customers.total_purchases'))}</td><td>{_money(st.total_debit)} {currency}</td></tr>"
+        f"<tr><td>{_esc(tr('customers.total_payments'))}</td><td>{_money(st.total_credit)} {currency}</td></tr>"
+        f"<tr class='grand'><td>{_esc(tr('customers.closing_balance'))}</td>"
+        f"<td>{_money(st.closing)} {currency}</td></tr>"
+        "</table>"
+    )
+    foot = f"<div class='foot'>{_esc(extras['footer'])}</div>" if extras["footer"] else ""
+    html_doc = (
+        f"<html><head><meta charset='utf-8'><style>{_base_css(paper, rtl)}</style></head>"
+        f"<body>{header}{meta}{items}{totals}{foot}</body></html>"
+    )
+    return RenderedDocument(html=html_doc, title=f"{customer.name} statement", paper=paper)
 
 
 def export_pdf(doc: RenderedDocument, out_path: str | Path) -> Path:

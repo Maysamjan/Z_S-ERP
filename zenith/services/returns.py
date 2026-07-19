@@ -26,7 +26,7 @@ from zenith.core.exceptions import (
 from zenith.db.models import (
     Sale, SaleLine, SalesReturn, SalesReturnLine,
     Purchase, PurchaseLine, PurchaseReturn, PurchaseReturnLine,
-    Customer, Supplier,
+    Supplier,
 )
 from zenith.security.permissions import Permission
 from zenith.services import audit, inventory
@@ -88,11 +88,15 @@ class SalesReturnService:
             )
 
         doc.total = total
-        # reverse the receivable for a credit customer
+        # reduce the customer's debt through the authoritative ledger. If the
+        # invoice was already paid this drives the balance negative (a customer
+        # credit balance the business can refund or apply to another invoice).
         if sale.customer_id:
-            customer = self.session.get(Customer, sale.customer_id)
-            if customer:
-                customer.balance = (customer.balance or Decimal("0")) - total
+            from zenith.services import customer_ledger
+            customer_ledger.post(
+                self.session, customer_id=sale.customer_id, entry_type="sales_return",
+                credit=total, ref_type="sales_return", ref_id=None, ref_no=doc.return_no,
+                description=f"Return of {sale.invoice_no}", actor=actor)
 
         self.session.add(doc)
         self.session.flush()

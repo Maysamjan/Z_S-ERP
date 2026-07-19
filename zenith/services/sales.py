@@ -19,7 +19,7 @@ from zenith.core.exceptions import (
 )
 from zenith.db.models import Sale, SaleLine, Product, Customer, Batch
 from zenith.security.permissions import Permission
-from zenith.services import audit, inventory
+from zenith.services import audit, inventory, customer_ledger
 from zenith.services.numbering import next_number
 from zenith.services.permissions_util import require
 
@@ -45,7 +45,8 @@ class SalesService:
     def create_sale(self, actor, *, customer_id: int | None, lines: list[LineInput],
                     warehouse_id: int | None = None, is_credit: bool = False,
                     discount: Decimal | str = "0", paid: Decimal | str = "0",
-                    price_mode: str = "retail") -> Sale:
+                    price_mode: str = "retail", due_date: date | None = None,
+                    reference: str = "") -> Sale:
         require(actor, Permission.SALE_CREATE)
         if not lines:
             raise ValidationError(message_key="error.no_lines")
@@ -56,6 +57,7 @@ class SalesService:
             invoice_no=next_number(self.session, Sale, Sale.invoice_no, "INV"),
             date=date.today(), customer_id=customer_id, warehouse_id=warehouse_id,
             status="draft", is_credit=is_credit, price_mode=price_mode,
+            due_date=due_date, reference=reference,
             user_id=actor.id if actor else None,
         )
         subtotal = Decimal("0")
@@ -90,7 +92,7 @@ class SalesService:
         return sale
 
     def approve_sale(self, actor, sale_id: int, *, block_expired: bool = True,
-                     today: date | None = None) -> Sale:
+                     today: date | None = None, credit_override: bool = False) -> Sale:
         require(actor, Permission.SALE_APPROVE)
         today = today or date.today()
         sale = self.session.get(Sale, sale_id)
@@ -99,16 +101,40 @@ class SalesService:
         if sale.status != "draft":
             raise BusinessRuleError(message_key="error.already_posted")
 
-        # Credit limit check (customer owes existing balance + credit part of this sale).
-        credit_amount = sale.total - sale.paid
-        if sale.is_credit and sale.customer_id and credit_amount > 0:
-            customer = self.session.get(Customer, sale.customer_id)
-            if customer and customer.credit_limit and customer.credit_limit > 0:
-                projected = (customer.balance or Decimal("0")) + credit_amount
-                if projected > customer.credit_limit:
-                    raise CreditLimitExceeded(message_key="error.credit_limit")
+        customer = self.session.get(Customer, sale.customer_id) if sale.customer_id else None
 
-        # Post each line: expiry guard + stock deduction.
+        # A walk-in counter sale (no customer, not marked credit, nothing entered as
+        # paid) is a cash sale settled in full -- there is no account to carry a
+        # balance on, so it must be paid now.
+        if customer is None and not sale.is_credit and (sale.paid or Decimal("0")) == 0:
+            sale.paid = sale.total or Decimal("0")
+
+        credit_amount = (sale.total or Decimal("0")) - (sale.paid or Decimal("0"))
+
+        # Any remaining unpaid balance (credit/partial) requires a real, non-cash
+        # customer to owe it -- credit is never extended to an anonymous walk-in.
+        if credit_amount > 0:
+            if customer is None:
+                raise BusinessRuleError(message_key="error.credit_needs_customer")
+            if customer.is_cash_customer:
+                raise BusinessRuleError(message_key="error.cash_customer_no_debt")
+
+        # Credit-limit check (existing debt + this credit portion), with override.
+        if customer is not None and credit_amount > 0 and customer.credit_limit and customer.credit_limit > 0:
+            projected = customer_ledger.current_balance(self.session, customer.id) + credit_amount
+            if projected > customer.credit_limit:
+                if not credit_override:
+                    raise CreditLimitExceeded(message_key="error.credit_limit")
+                require(actor, Permission.CREDIT_OVERRIDE)
+                audit.log(self.session, "credit_limit_override", actor=actor, entity="customer",
+                          entity_id=customer.id,
+                          detail=f"{sale.invoice_no} projected={projected} limit={customer.credit_limit}")
+
+        # Snapshot the previous customer balance for the printed bill.
+        prev_balance = customer_ledger.current_balance(self.session, customer.id) if customer else Decimal("0")
+        sale.previous_balance = prev_balance
+
+        # Post each line atomically: expiry guard + stock deduction.
         for line in sale.lines:
             if block_expired and line.batch_id:
                 batch = self.session.get(Batch, line.batch_id)
@@ -120,13 +146,19 @@ class SalesService:
                 ref_type="sale", ref_id=sale.id, actor=actor,
             )
 
-        # Update customer balance for the unpaid (credit) portion.
-        if sale.customer_id and credit_amount > 0:
-            customer = self.session.get(Customer, sale.customer_id)
-            if customer:
-                customer.balance = (customer.balance or Decimal("0")) + credit_amount
+        # Post the unpaid (credit) portion to the authoritative customer ledger.
+        if customer is not None and credit_amount > 0:
+            entry_type = "credit_sale" if (sale.paid or Decimal("0")) == 0 else "partial_credit_sale"
+            customer_ledger.post(
+                self.session, customer_id=customer.id, entry_type=entry_type,
+                debit=credit_amount, ref_type="sale", ref_id=sale.id, ref_no=sale.invoice_no,
+                description=f"Sale {sale.invoice_no}", actor=actor,
+            )
 
+        sale.sale_type = "credit" if credit_amount > 0 else "cash"
+        sale.payment_status = sale.compute_payment_status()
+        sale.new_balance = customer_ledger.current_balance(self.session, customer.id) if customer else Decimal("0")
         sale.status = "approved"
         audit.log(self.session, "sale_approve", actor=actor, entity="sale", entity_id=sale.id,
-                  detail=f"{sale.invoice_no} total={sale.total}")
+                  detail=f"{sale.invoice_no} total={sale.total} paid={sale.paid} status={sale.payment_status}")
         return sale

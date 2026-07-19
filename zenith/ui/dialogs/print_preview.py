@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
 from zenith.db.base import session_scope
 from zenith.services.printing import (
     render_sale_invoice, render_customer_receipt, render_supplier_payment,
-    render_expense_voucher, export_pdf,
+    render_expense_voucher, render_customer_statement, export_pdf,
 )
 from zenith.ui.widgets.buttons import PrimaryButton, SecondaryButton
 from zenith.ui.widgets.common import Toast
@@ -114,6 +114,26 @@ class VoucherPreviewDialog(SalePrintPreviewDialog):
         try:
             with session_scope(self.ctx.db) as s:
                 self._doc = renderer(s, self.sale_id, paper=paper, locale=self.ctx.locale)
+            self.view.setHtml(self._doc.html)
+        except Exception as exc:  # pragma: no cover - GUI error path
+            QMessageBox.critical(self, self.ctx.tr("common.error"), str(exc))
+
+
+class StatementPreviewDialog(SalePrintPreviewDialog):
+    """Print preview for a customer's branded account statement."""
+
+    def __init__(self, ctx, customer_id: int, *, start=None, end=None, parent=None):
+        self._start = start
+        self._end = end
+        super().__init__(ctx, customer_id, parent)
+
+    def _render(self):
+        paper = self.paper.currentData() or "a4"
+        try:
+            with session_scope(self.ctx.db) as s:
+                self._doc = render_customer_statement(
+                    s, self.sale_id, start=self._start, end=self._end,
+                    paper=paper, locale=self.ctx.locale)
             self.view.setHtml(self._doc.html)
         except Exception as exc:  # pragma: no cover - GUI error path
             QMessageBox.critical(self, self.ctx.tr("common.error"), str(exc))
